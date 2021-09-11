@@ -11,6 +11,9 @@ class ofApp : public ofBaseApp{
 		void setup();
 		void update();
 		void draw();
+		void pixelSort();
+		void swapPixels(ofPixels& pixels, int index1, int index2, int bytesPerPixel);
+		void start();
 		bool clickedOnLabel(const void* sender);
 
 		void loadImage(std::string fileName);
@@ -31,9 +34,16 @@ class ofApp : public ofBaseApp{
 		
 		ofDirectory directory;
 		ofImage image;
+		ofImage sortedImage;
+		ofPixels pixels;
 
 		ofxPanel gui;
 		int guiWidth = 200;
 		ofxFloatSlider slider;
 		vector<ofxButton*> buttons;
+		ofxButton sortButton;
+		char pixelSwapBuffer[4];
+
+		int sortingIndex = 0;
+		bool started = false;
 };
