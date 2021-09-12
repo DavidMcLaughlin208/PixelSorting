@@ -14,7 +14,9 @@ class ofApp : public ofBaseApp{
 		void pixelSort();
 		void swapPixels(ofPixels& pixels, int index1, int index2, int bytesPerPixel);
 		int getActualIndex(int index, int column, int bytesPerPixel, int imageWidth, bool isHorizontal);
+		float getThresholdVariableFromColor(ofColor color, std::string selectedVariable);
 		void start();
+		void selectParameterRadioButton(const void* sender);
 		bool clickedOnLabel(const void* sender);
 
 		void loadImage(std::string fileName);
@@ -32,6 +34,11 @@ class ofApp : public ofBaseApp{
 		void windowResized(int w, int h);
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
+
+		std::string BRIGHTNESS = "Brightness";
+		std::string LIGHTNESS = "Lightness";
+		std::string HUE = "Hue";
+		std::string SATURATION = "Saturation";
 		
 		ofDirectory directory;
 		ofImage image;
@@ -55,4 +62,15 @@ class ofApp : public ofBaseApp{
 		float threshold = 0.1f;
 		bool horizontal = false;
 		bool reverse = false;
+
+		// Threshold parameter radio buttons
+		ofxButton brightnessRadio;
+		ofxButton hueRadio;
+		ofxButton lightnessRadio;
+		ofxButton saturationRadio;
+		vector<ofxButton> thresholdValueRadioButtons;
+		std::string currentlySelectedThresholdVariable;
+		ofxLabel selectedThresholdVariable;
+
+
 };

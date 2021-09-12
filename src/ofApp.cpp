@@ -11,6 +11,20 @@ void ofApp::setup() {
 	gui.add(horizontalToggle.setup("Horizontal"));
 	gui.add(reverseSortLabel.setup((string)"Reverse Direction"));
 	gui.add(reverseSort.setup("Reverse Sort"));
+
+	currentlySelectedThresholdVariable = BRIGHTNESS;
+	gui.add(selectedThresholdVariable.setup((string)"Sorting by: " + currentlySelectedThresholdVariable));
+	gui.add(brightnessRadio.setup(BRIGHTNESS));
+	gui.add(lightnessRadio.setup(LIGHTNESS));
+	gui.add(hueRadio.setup(HUE));
+	gui.add(saturationRadio.setup(SATURATION));
+	brightnessRadio.addListener(this, &ofApp::selectParameterRadioButton);
+	lightnessRadio.addListener(this, &ofApp::selectParameterRadioButton);
+	hueRadio.addListener(this, &ofApp::selectParameterRadioButton);
+	saturationRadio.addListener(this, &ofApp::selectParameterRadioButton);
+
+	
+
 	directory.open("images");
 	directory.listDir();
 	for (int i = 0; i < directory.size(); i++) {
@@ -73,7 +87,7 @@ void ofApp::pixelSort() {
 			colorArray[c] = pixels[actualI + c];
 		}
 		color.set(colorArray[0], colorArray[1], colorArray[2]);
-		float value = color.getBrightness() / 255.0f;
+		float value = getThresholdVariableFromColor(color, currentlySelectedThresholdVariable);
 		if (value >= threshold) {
 			if (startOfInterval == -1) {
 				startOfInterval = i;
@@ -122,7 +136,7 @@ void ofApp::pixelSort() {
 					colorArray[c] = pixels[actualJ + c];
 				}
 				color.set(colorArray[0], colorArray[1], colorArray[2]);
-				float val = color.getBrightness();
+				float val = getThresholdVariableFromColor(color, currentlySelectedThresholdVariable);
 				if (val > highestVal) {
 					highestVal = val;
 					indexOfHighest = actualJ;
@@ -163,8 +177,32 @@ int ofApp::getActualIndex(int index, int column, int bytesPerPixel, int imageWid
 	}
 }
 
+float ofApp::getThresholdVariableFromColor(ofColor color, std::string selectedVariable) {
+	if (selectedVariable == BRIGHTNESS) {
+		return color.getBrightness() / 255.0f;
+	}
+	else if (selectedVariable == LIGHTNESS) {
+		return color.getLightness() / 255.0f;
+	}
+	else if (selectedVariable == HUE) {
+		return color.getHue() / 255.0f;
+	}
+	else if (selectedVariable == SATURATION) {
+		return color.getSaturation() / 255.0f;
+	}
+	else {
+		ofLogError((string)"Invalid selected threshold variable: " + selectedVariable);
+		return 0.0f;
+	}
+}
+
 void ofApp::start() {
 	started = !started;
+}
+
+void ofApp::selectParameterRadioButton(const void* sender) {
+	currentlySelectedThresholdVariable = ((ofParameter<bool>*)sender)->getName();
+	selectedThresholdVariable = (string)"Sorting by: " + currentlySelectedThresholdVariable;
 }
 
 bool ofApp::clickedOnLabel(const void* sender) {
