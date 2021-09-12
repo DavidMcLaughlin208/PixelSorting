@@ -13,6 +13,7 @@ class ofApp : public ofBaseApp{
 		void draw();
 		void pixelSort();
 		void swapPixels(ofPixels& pixels, int index1, int index2, int bytesPerPixel);
+		int getActualIndex(int index, int column, int bytesPerPixel, int imageWidth, bool isHorizontal);
 		void start();
 		bool clickedOnLabel(const void* sender);
 
@@ -42,10 +43,13 @@ class ofApp : public ofBaseApp{
 		ofxFloatSlider thresholdSlider;
 		vector<ofxButton*> buttons;
 		ofxButton sortButton;
+		ofxToggle horizontalToggle;
+		ofxLabel horiztonalToggleLabel;
 		char pixelSwapBuffer[4];
 
 		int sortingIndex = 0;
 		bool started = false;
 
 		float threshold = 0.1f;
+		bool horizontal = false;
 };

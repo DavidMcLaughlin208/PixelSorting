@@ -7,7 +7,8 @@ void ofApp::setup() {
 	gui.add(sortButton.setup("Sort"));
 	sortButton.addListener(this, &ofApp::start);
 	gui.add(thresholdSlider.setup("Threshold", 0.5, 0.0, 1.0));
-
+	gui.add(horiztonalToggleLabel.setup((std::string) "Horzontal Sort"));
+	gui.add(horizontalToggle.setup("Horizontal"));
 	directory.open("images");
 	directory.listDir();
 	for (int i = 0; i < directory.size(); i++) {
@@ -24,6 +25,7 @@ void ofApp::setup() {
 void ofApp::update() {
 	ofSetWindowTitle(ofToString(ofGetFrameRate()));
 	threshold = thresholdSlider;
+	horizontal = horizontalToggle;
 	if (started) {
 		pixelSort();
 	}
@@ -34,28 +36,36 @@ void ofApp::draw() {
 	if (image.isAllocated()) {
 		image.draw(0, 0);
 	}
-	if (sortedImage.isAllocated()) {
-		sortedImage.draw(image.getWidth(), 0);
-	}
 	gui.draw();
 }
 
 void ofApp::pixelSort() {
-	int width = image.getWidth();
+	int widthOrHeight;
+	int start = sortingIndex;
+	int end;
+	int columnsOrRows;
+	if (horizontal) {
+		widthOrHeight = image.getWidth();
+		end = (start + 1) * widthOrHeight;
+		columnsOrRows = image.getHeight();
+	}
+	else {
+		widthOrHeight = 0;
+		end = image.getHeight();
+		columnsOrRows = image.getWidth();
+	}
 	float highestVal;
 	int indexOfHighest;
-	int startOfRow = sortingIndex;
-	int endOfRow = (startOfRow + 1) * width;
+	
 	int bytesPerPixel = pixels.getBytesPerPixel();
-	int columns = image.getHeight();
 
 	int startOfInterval = -1;
 	int endOfInterval = -1;
 
 	ofColor color;
 	char colorArray[4];
-	for (int i = startOfRow * width; i < endOfRow; i++) {
-		int actualI = i * bytesPerPixel;
+	for (int i = start * widthOrHeight; i < end; i++) {
+		int actualI = getActualIndex(i, start, bytesPerPixel, image.getWidth(), this->horizontal);
 		for (int c = 0; c < bytesPerPixel; c++) {
 			colorArray[c] = pixels[actualI + c];
 		}
@@ -71,11 +81,11 @@ void ofApp::pixelSort() {
 				// then we extend endOfInterval to the current index, we have special logic here 
 				// to ensure that if we are at the end of a row we start the currently started interval
 				endOfInterval = i;
-				if (!(i == endOfRow - 1)) {
+				if (!(i == end - 1)) {
 					continue;
 				}
 				else {
-					// this is the end of a row so we will sort this interval
+					// this is the end of a row or column so we will sort this interval
 				}
 			}
 		}
@@ -91,11 +101,11 @@ void ofApp::pixelSort() {
 			}
 		}
 		for (int s = startOfInterval; s <= endOfInterval; s++) {
-			int actualS = s * bytesPerPixel;
+			int actualS = getActualIndex(s, start, bytesPerPixel, image.getWidth(), this->horizontal);
 			indexOfHighest = actualS;
 			highestVal = -1;
 			for (int j = s; j <= endOfInterval; j++) {
-				int actualJ = j * bytesPerPixel;
+				int actualJ = getActualIndex(j, start, bytesPerPixel, image.getWidth(), this->horizontal);
 				for (int c = 0; c < bytesPerPixel; c++) {
 					colorArray[c] = pixels[actualJ + c];
 				}
@@ -113,11 +123,11 @@ void ofApp::pixelSort() {
 	}
 
 	sortingIndex += 1;
-	if (sortingIndex >= columns) {
+	if (sortingIndex >= columnsOrRows - 1) {
 		sortingIndex = 0;
 		started = false;
 	}
-	sortedImage.setFromPixels(pixels);
+	image.setFromPixels(pixels);
 }
 
 void ofApp::swapPixels(ofPixels &pixels, int index1, int index2, int bytesPerPixel) {
@@ -129,6 +139,15 @@ void ofApp::swapPixels(ofPixels &pixels, int index1, int index2, int bytesPerPix
 	}
 	for (int c = 0; c < bytesPerPixel; c++) {
 		pixels[index2 + c] = pixelSwapBuffer[c];
+	}
+}
+
+int ofApp::getActualIndex(int index, int column, int bytesPerPixel, int imageWidth, bool isHorizontal) {
+	if (isHorizontal) {
+		return index * bytesPerPixel;
+	}
+	else {
+		return (index * imageWidth * bytesPerPixel) + (column * bytesPerPixel);
 	}
 }
 
@@ -144,7 +163,7 @@ bool ofApp::clickedOnLabel(const void* sender) {
 
 void ofApp::loadImage(std::string fileName) {
 	image.load("images/" + fileName);
-	ofSetWindowShape(image.getWidth() * 2 + guiWidth, image.getHeight());
+	ofSetWindowShape(image.getWidth() + guiWidth, image.getHeight());
 	resetGuiPosition();
 	pixels = image.getPixels();
 	sortingIndex = 0;
@@ -182,7 +201,7 @@ void ofApp::mousePressed(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
-	ofLogNotice("Released");
+
 }
 
 //--------------------------------------------------------------
