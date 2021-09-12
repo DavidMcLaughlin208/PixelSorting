@@ -9,6 +9,8 @@ void ofApp::setup() {
 	gui.add(thresholdSlider.setup("Threshold", 0.5, 0.0, 1.0));
 	gui.add(horiztonalToggleLabel.setup((std::string) "Horzontal Sort"));
 	gui.add(horizontalToggle.setup("Horizontal"));
+	gui.add(reverseSortLabel.setup((string)"Reverse Direction"));
+	gui.add(reverseSort.setup("Reverse Sort"));
 	directory.open("images");
 	directory.listDir();
 	for (int i = 0; i < directory.size(); i++) {
@@ -26,6 +28,7 @@ void ofApp::update() {
 	ofSetWindowTitle(ofToString(ofGetFrameRate()));
 	threshold = thresholdSlider;
 	horizontal = horizontalToggle;
+	reverse = reverseSort;
 	if (started) {
 		pixelSort();
 	}
@@ -100,12 +103,21 @@ void ofApp::pixelSort() {
 				// to sort that interval in the following nested loop
 			}
 		}
+		
 		for (int s = startOfInterval; s <= endOfInterval; s++) {
-			int actualS = getActualIndex(s, start, bytesPerPixel, image.getWidth(), this->horizontal);
+			int modS = s;
+			if (reverse) {
+				modS = endOfInterval - s + startOfInterval;
+			}
+			int actualS = getActualIndex(modS, start, bytesPerPixel, image.getWidth(), this->horizontal);
 			indexOfHighest = actualS;
 			highestVal = -1;
 			for (int j = s; j <= endOfInterval; j++) {
-				int actualJ = getActualIndex(j, start, bytesPerPixel, image.getWidth(), this->horizontal);
+				int modJ = j;
+				if (reverse) {
+					modJ = endOfInterval - j + startOfInterval;
+				}
+				int actualJ = getActualIndex(modJ, start, bytesPerPixel, image.getWidth(), this->horizontal);
 				for (int c = 0; c < bytesPerPixel; c++) {
 					colorArray[c] = pixels[actualJ + c];
 				}

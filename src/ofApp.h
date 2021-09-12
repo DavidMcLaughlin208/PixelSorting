@@ -44,6 +44,8 @@ class ofApp : public ofBaseApp{
 		vector<ofxButton*> buttons;
 		ofxButton sortButton;
 		ofxToggle horizontalToggle;
+		ofxToggle reverseSort;
+		ofxLabel reverseSortLabel;
 		ofxLabel horiztonalToggleLabel;
 		char pixelSwapBuffer[4];
 
@@ -52,4 +54,5 @@ class ofApp : public ofBaseApp{
 
 		float threshold = 0.1f;
 		bool horizontal = false;
+		bool reverse = false;
 };
