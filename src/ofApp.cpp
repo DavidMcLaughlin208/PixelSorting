@@ -6,6 +6,7 @@ void ofApp::setup() {
 	gui.setPosition(ofGetWidth() - guiWidth, 10);
 	gui.add(sortButton.setup("Sort"));
 	sortButton.addListener(this, &ofApp::start);
+	gui.add(thresholdSlider.setup("Threshold", 0.5, 0.0, 1.0));
 
 	directory.open("images");
 	directory.listDir();
@@ -22,6 +23,7 @@ void ofApp::setup() {
 //--------------------------------------------------------------
 void ofApp::update() {
 	ofSetWindowTitle(ofToString(ofGetFrameRate()));
+	threshold = thresholdSlider;
 	if (started) {
 		pixelSort();
 	}
@@ -39,59 +41,82 @@ void ofApp::draw() {
 }
 
 void ofApp::pixelSort() {
-	//int i = sortingIndex;
 	int width = image.getWidth();
-	float highest;
+	float highestVal;
 	int indexOfHighest;
-	int startingIndex = sortingIndex;
+	int startOfRow = sortingIndex;
+	int endOfRow = (startOfRow + 1) * width;
 	int bytesPerPixel = pixels.getBytesPerPixel();
-	ofColor color;
 	int columns = image.getHeight();
+
+	int startOfInterval = -1;
+	int endOfInterval = -1;
+
+	ofColor color;
 	char colorArray[4];
-	for (int i = startingIndex * width; i <= (startingIndex + 1) * width; i++) {
+	for (int i = startOfRow * width; i < endOfRow; i++) {
 		int actualI = i * bytesPerPixel;
-		indexOfHighest = actualI;
-		highest = -1;
-		for (int j = i; j < (startingIndex + 1) * width; j ++) {
-			int actualJ = j * bytesPerPixel;
-			for (int c = 0; c < bytesPerPixel; c++) {
-				colorArray[c] = pixels[actualJ + c];
+		for (int c = 0; c < bytesPerPixel; c++) {
+			colorArray[c] = pixels[actualI + c];
+		}
+		color.set(colorArray[0], colorArray[1], colorArray[2]);
+		float value = color.getBrightness() / 255.0f;
+		if (value >= threshold) {
+			if (startOfInterval == -1) {
+				startOfInterval = i;
+				continue;
 			}
-			char r = pixels[actualJ];
-			char g = pixels[actualJ + 1];
-			char b = pixels[actualJ + 2];
-			color.set(colorArray[0], colorArray[1], colorArray[2]);
-			float val = color.getBrightness();
-			if (val > highest) {
-				highest = val;
-				indexOfHighest = actualJ;
+			else {
+				// If we are above threshold and we already have a valid startOfInterval
+				// then we extend endOfInterval to the current index, we have special logic here 
+				// to ensure that if we are at the end of a row we start the currently started interval
+				endOfInterval = i;
+				if (!(i == endOfRow - 1)) {
+					continue;
+				}
+				else {
+					// this is the end of a row so we will sort this interval
+				}
 			}
 		}
-		swapPixels(pixels, actualI, indexOfHighest, bytesPerPixel);
-		/*char oldR = pixels[i];
-		char oldG = pixels[i + 1];
-		char oldB = pixels[i + 2];
-		char oldA = pixels[i + 3];
-
-		pixels[i] = pixels[indexOfHighest];
-		pixels[i + 1] = pixels[indexOfHighest + 1];
-		pixels[i + 2] = pixels[indexOfHighest + 2];
-		pixels[i + 3] = pixels[indexOfHighest + 3];
-
-		pixels[indexOfHighest] = oldR;
-		pixels[indexOfHighest + 1] = oldG;
-		pixels[indexOfHighest + 2] = oldB;
-		pixels[indexOfHighest + 3] = oldA;*/
+		else {
+			if (startOfInterval == -1) {
+				// If we are under threshold and there is no start of interval then there is nothing to do here
+				continue;
+			}
+			else {
+				// If we are below threshold and we have a valid startOfInterval index
+				// then this means that we have found our interval and we will move on
+				// to sort that interval in the following nested loop
+			}
+		}
+		for (int s = startOfInterval; s <= endOfInterval; s++) {
+			int actualS = s * bytesPerPixel;
+			indexOfHighest = actualS;
+			highestVal = -1;
+			for (int j = s; j <= endOfInterval; j++) {
+				int actualJ = j * bytesPerPixel;
+				for (int c = 0; c < bytesPerPixel; c++) {
+					colorArray[c] = pixels[actualJ + c];
+				}
+				color.set(colorArray[0], colorArray[1], colorArray[2]);
+				float val = color.getBrightness();
+				if (val > highestVal) {
+					highestVal = val;
+					indexOfHighest = actualJ;
+				}
+			}
+			swapPixels(pixels, actualS, indexOfHighest, bytesPerPixel);
+		}
+		startOfInterval = -1;
+		endOfInterval = -1;
 	}
 
 	sortingIndex += 1;
-	//ofLogNotice("Finished sorting row " + sortingIndex);
 	if (sortingIndex >= columns) {
 		sortingIndex = 0;
 		started = false;
-		ofLogNotice("Finished sorting");
 	}
-	//}
 	sortedImage.setFromPixels(pixels);
 }
 
@@ -99,11 +124,9 @@ void ofApp::swapPixels(ofPixels &pixels, int index1, int index2, int bytesPerPix
 	for (int c = 0; c < bytesPerPixel; c++) {
 		pixelSwapBuffer[c] = pixels[index1 + c];
 	}
-
 	for (int c = 0; c < bytesPerPixel; c++) {
 		pixels[index1 + c] = pixels[index2 + c];
 	}
-
 	for (int c = 0; c < bytesPerPixel; c++) {
 		pixels[index2 + c] = pixelSwapBuffer[c];
 	}

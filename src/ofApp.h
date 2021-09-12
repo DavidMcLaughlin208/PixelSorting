@@ -39,11 +39,13 @@ class ofApp : public ofBaseApp{
 
 		ofxPanel gui;
 		int guiWidth = 200;
-		ofxFloatSlider slider;
+		ofxFloatSlider thresholdSlider;
 		vector<ofxButton*> buttons;
 		ofxButton sortButton;
 		char pixelSwapBuffer[4];
 
 		int sortingIndex = 0;
 		bool started = false;
+
+		float threshold = 0.1f;
 };
