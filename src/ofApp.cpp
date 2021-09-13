@@ -2,37 +2,10 @@
 
 //--------------------------------------------------------------
 void ofApp::setup() {
-	gui.setup();
-	gui.setPosition(ofGetWidth() - guiWidth, 10);
-	gui.add(sortButton.setup("Sort"));
-	sortButton.addListener(this, &ofApp::start);
-	gui.add(thresholdSlider.setup("Threshold", 0.5, 0.0, 1.0));
-	gui.add(horiztonalToggleLabel.setup((std::string) "Horzontal Sort"));
-	gui.add(horizontalToggle.setup("Horizontal"));
-	gui.add(reverseSortLabel.setup((string)"Reverse Direction"));
-	gui.add(reverseSort.setup("Reverse Sort"));
-
-	currentlySelectedThresholdVariable = BRIGHTNESS;
-	gui.add(selectedThresholdVariable.setup((string)"Sorting by: " + currentlySelectedThresholdVariable));
-	gui.add(brightnessRadio.setup(BRIGHTNESS));
-	gui.add(lightnessRadio.setup(LIGHTNESS));
-	gui.add(hueRadio.setup(HUE));
-	gui.add(saturationRadio.setup(SATURATION));
-	brightnessRadio.addListener(this, &ofApp::selectParameterRadioButton);
-	lightnessRadio.addListener(this, &ofApp::selectParameterRadioButton);
-	hueRadio.addListener(this, &ofApp::selectParameterRadioButton);
-	saturationRadio.addListener(this, &ofApp::selectParameterRadioButton);
+	setupGui();
+	setupShaders();
 
 	
-
-	directory.open("images");
-	directory.listDir();
-	for (int i = 0; i < directory.size(); i++) {
-		ofxButton* button = new ofxButton();
-		gui.add(button->setup(directory.getName(i)));
-		buttons.push_back(button);
-		button->addListener(this, &ofApp::clickedOnLabel);
-	}
 	
 	
 }
@@ -216,12 +189,57 @@ void ofApp::loadImage(std::string fileName) {
 	ofSetWindowShape(image.getWidth() + guiWidth, image.getHeight());
 	resetGuiPosition();
 	pixels = image.getPixels();
+	if (useCompute) {
+		if (pixelsBuffer.isAllocated()) {
+			pixelsBuffer.invalidate();
+		}
+		pixelsBuffer.allocate(pixels, GL_READ_WRITE);
+		pixelsBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 0);
+	}
 	sortingIndex = 0;
 	started = false;
 }
 
 void ofApp::resetGuiPosition() {
 	gui.setPosition(ofGetWidth() - guiWidth, 10);
+}
+
+void ofApp::setupGui() {
+	gui.setup();
+	gui.setPosition(ofGetWidth() - guiWidth, 10);
+	gui.add(sortButton.setup("Sort"));
+	sortButton.addListener(this, &ofApp::start);
+	gui.add(thresholdSlider.setup("Threshold", 0.5, 0.0, 1.0));
+	gui.add(horiztonalToggleLabel.setup((std::string) "Horzontal Sort"));
+	gui.add(horizontalToggle.setup("Horizontal"));
+	gui.add(reverseSortLabel.setup((string)"Reverse Direction"));
+	gui.add(reverseSort.setup("Reverse Sort"));
+
+	currentlySelectedThresholdVariable = BRIGHTNESS;
+	gui.add(selectedThresholdVariable.setup((string)"Sorting by: " + currentlySelectedThresholdVariable));
+	gui.add(brightnessRadio.setup(BRIGHTNESS));
+	gui.add(lightnessRadio.setup(LIGHTNESS));
+	gui.add(hueRadio.setup(HUE));
+	gui.add(saturationRadio.setup(SATURATION));
+	brightnessRadio.addListener(this, &ofApp::selectParameterRadioButton);
+	lightnessRadio.addListener(this, &ofApp::selectParameterRadioButton);
+	hueRadio.addListener(this, &ofApp::selectParameterRadioButton);
+	saturationRadio.addListener(this, &ofApp::selectParameterRadioButton);
+
+	// May want to separate this to a function at some point
+	directory.open("images");
+	directory.listDir();
+	for (int i = 0; i < directory.size(); i++) {
+		ofxButton* button = new ofxButton();
+		gui.add(button->setup(directory.getName(i)));
+		buttons.push_back(button);
+		button->addListener(this, &ofApp::clickedOnLabel);
+	}
+}
+
+void ofApp::setupShaders() {
+	pixelSortCompute.setupShaderFromFile(GL_COMPUTE_SHADER, "shaders/pixelSort.compute");
+	pixelSortCompute.linkProgram();
 }
 
 //--------------------------------------------------------------

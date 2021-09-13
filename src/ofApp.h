@@ -23,6 +23,10 @@ class ofApp : public ofBaseApp{
 
 		void resetGuiPosition();
 
+		void setupGui();
+
+		void setupShaders();
+
 		void keyPressed(int key);
 		void keyReleased(int key);
 		void mouseMoved(int x, int y );
@@ -45,6 +49,9 @@ class ofApp : public ofBaseApp{
 		ofImage sortedImage;
 		ofPixels pixels;
 
+		ofShader pixelSortCompute;
+		ofBufferObject pixelsBuffer;
+
 		ofxPanel gui;
 		int guiWidth = 200;
 		ofxFloatSlider thresholdSlider;
@@ -62,6 +69,7 @@ class ofApp : public ofBaseApp{
 		float threshold = 0.1f;
 		bool horizontal = false;
 		bool reverse = false;
+		bool useCompute = true;
 
 		// Threshold parameter radio buttons
 		ofxButton brightnessRadio;

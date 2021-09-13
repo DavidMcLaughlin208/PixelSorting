@@ -1,0 +1,144 @@
+#version 440
+
+layout(std430, binding = 0) buffer pixelBuffer {
+	uint pixels[];
+};
+
+uniform int maxIndex;
+uniform int widthOrHeight;
+uniform int imageHeight;
+uniform int imageWidth;
+uniform int bytesPerPixel;
+uniform bool horizontal;
+uniform bool reverse;
+uniform float threshold;
+
+int getActualIndex(int index, int column, int bytesPerPixel, int imageWidth, bool isHorizontal);
+void swapPixels(uint pixelSwapBuffer[4], int index1, int index2, int bytesPerPixel);
+
+
+layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+void main() {
+	if (gl_GlobalInvocationID.x > maxIndex) {
+		return;
+	}
+	uint pixelSwapBuffer[4];
+	uint colorArray[4];
+
+	int start = 1;// gl_GlobalInvocationID.x;
+	int end;
+	int columnsOrRows;
+	if (horizontal) {
+		end = (start + 1) * widthOrHeight;
+		columnsOrRows = imageHeight;
+	}
+	else {
+		end = imageHeight;
+		columnsOrRows = imageWidth;
+	}
+
+	float highestVal;
+	int indexOfHighest;
+
+	int startOfInterval = -1;
+	int endOfInterval = -1;
+
+	uvec4 color = uvec4(0, 0, 0, 0);
+
+	for (int i = start * widthOrHeight; i < end; i++) {
+		int actualI = getActualIndex(i, start, bytesPerPixel, imageWidth, horizontal);
+		for (int c = 0; c < bytesPerPixel; c++) {
+			colorArray[c] = pixels[actualI + c];
+		}
+		//color.xyz(colorArray[0], colorArray[1], colorArray[2]);
+		color.x = colorArray[0];
+		color.y = colorArray[1];
+		color.z = colorArray[2];
+		//float value = getThresholdVariableFromColor(color, currentlySelectedThresholdVariable);
+		float value = 0.5;
+		if (value >= threshold) {
+			if (startOfInterval == -1) {
+				startOfInterval = i;
+				continue;
+			}
+			else {
+				// If we are above threshold and we already have a valid startOfInterval
+				// then we extend endOfInterval to the current index, we have special logic here 
+				// to ensure that if we are at the end of a row we start the currently started interval
+				endOfInterval = i;
+				if (!(i == end - 1)) {
+					continue;
+				}
+				else {
+					// this is the end of a row or column so we will sort this interval
+				}
+			}
+		}
+		else {
+			if (startOfInterval == -1) {
+				// If we are under threshold and there is no start of interval then there is nothing to do here
+				continue;
+			}
+			else {
+				// If we are below threshold and we have a valid startOfInterval index
+				// then this means that we have found our interval and we will move on
+				// to sort that interval in the following nested loop
+			}
+		}
+
+		for (int s = startOfInterval; s <= endOfInterval; s++) {
+			int modS = s;
+			if (reverse) {
+				modS = endOfInterval - s + startOfInterval;
+			}
+			int actualS = getActualIndex(modS, start, bytesPerPixel, imageWidth, horizontal);
+			indexOfHighest = actualS;
+			highestVal = -1;
+			for (int j = s; j <= endOfInterval; j++) {
+				int modJ = j;
+				if (reverse) {
+					modJ = endOfInterval - j + startOfInterval;
+				}
+				int actualJ = getActualIndex(modJ, start, bytesPerPixel, imageWidth, horizontal);
+				for (int c = 0; c < bytesPerPixel; c++) {
+					colorArray[c] = pixels[actualJ + c];
+				}
+				//color.xyz(colorArray[0], colorArray[1], colorArray[2]);
+				color.x = colorArray[0];
+				color.y = colorArray[1];
+				color.z = colorArray[2];
+				//float val = getThresholdVariableFromColor(color, currentlySelectedThresholdVariable);
+				float val = 0.5;
+				if (val > highestVal) {
+					highestVal = val;
+					indexOfHighest = actualJ;
+				}
+			}
+			swapPixels(pixelSwapBuffer, actualS, indexOfHighest, bytesPerPixel);
+		}
+		startOfInterval = -1;
+		endOfInterval = -1;
+	}
+
+}
+
+int getActualIndex(int index, int column, int bytesPerPixel, int imageWidth, bool isHorizontal) {
+	if (isHorizontal) {
+		return index * bytesPerPixel;
+	}
+	else {
+		return (index * imageWidth * bytesPerPixel) + (column * bytesPerPixel);
+	}
+}
+
+void swapPixels(uint pixelSwapBuffer[4], int index1, int index2, int bytesPerPixel) {
+	for (int c = 0; c < bytesPerPixel; c++) {
+		pixelSwapBuffer[c] = pixels[index1 + c];
+	}
+	for (int c = 0; c < bytesPerPixel; c++) {
+		pixels[index1 + c] = pixels[index2 + c];
+	}
+	for (int c = 0; c < bytesPerPixel; c++) {
+		pixels[index2 + c] = pixelSwapBuffer[c];
+	}
+}
