@@ -5,9 +5,6 @@ void ofApp::setup() {
 	setupGui();
 	setupShaders();
 
-	
-	
-	
 }
 
 //--------------------------------------------------------------
@@ -17,16 +14,142 @@ void ofApp::update() {
 	horizontal = horizontalToggle;
 	reverse = reverseSort;
 	if (started) {
-		pixelSort();
+		if (useCompute) {
+			int maxIndex = this->horizontal ? image.getHeight() : image.getWidth();
+			int widthOrHeight = this->horizontal ? image.getWidth() : 0;
+			pixelSortCompute.begin();
+			pixelSortCompute.setUniform1i("maxIndex", maxIndex);
+			pixelSortCompute.setUniform1i("widthOrHeight", maxIndex);
+			pixelSortCompute.setUniform1i("imageHeight", image.getHeight());
+			pixelSortCompute.setUniform1i("imageWidth", image.getWidth());
+			pixelSortCompute.setUniform1i("bytesPerPixel", pixels.getBytesPerPixel());
+			pixelSortCompute.setUniform1i("reverse", this->reverse);
+			pixelSortCompute.setUniform1i("horizontal", this->horizontal);
+			pixelSortCompute.setUniform1f("threshold", this->threshold);
+			pixelSortCompute.dispatchCompute((image.getHeight() * image.getWidth() + 1024 - 1) / 1024, 1, 1);
+			pixelSortCompute.end();
+			started = false;
+
+			glm::vec3* updatedPixels = pixelsBuffer.map<glm::vec3>(GL_READ_WRITE);
+			vector<unsigned char> charVec;
+			convertVecToCharPixels(charVec, updatedPixels, pixels.getBytesPerPixel(), image.getWidth() * image.getHeight());
+			unsigned char* startOfPixels = &(charVec[0]);
+			pixels.setFromPixels(startOfPixels, image.getWidth(), image.getHeight(), pixels.getPixelFormat());
+			pixelsBuffer.unmap();
+			image.setFromPixels(pixels);
+		}
+		else {
+			pixelSort();
+		}
+	}
+}
+
+void ofApp::convertVecToCharPixels(vector<unsigned char> &charVec, glm::vec3* vecPointer, int bytesPerPixel, int size) {
+	charVec.resize(size * bytesPerPixel);
+	for (int i = 0; i < size; i++) {
+		if (i == 27648) {
+			int p = 0;
+		}
+		glm::vec3 vecPixel = vecPointer[i];
+		int scaledI = charVec.size() - bytesPerPixel - (i * bytesPerPixel);
+		charVec[scaledI] = vecPixel.r * 255.0f;
+		charVec[scaledI + 1] = vecPixel.g * 255.0f;
+		charVec[scaledI + 2] = vecPixel.b * 255.0f;
+		if (bytesPerPixel == 4) {
+			charVec[scaledI + 3] = 255;
+		}
 	}
 }
 
 //--------------------------------------------------------------
 void ofApp::draw() {
-	if (image.isAllocated()) {
+	if (!useCompute) {
+		if (image.isAllocated()) {
+
+			int wid = image.getWidth();
+			int hei = image.getHeight();
+			if (image.getWidth() > 1280 || image.getHeight() > 768) {
+				int heightRat = image.getHeight() / 768.0f;
+				int widthRat = image.getWidth() / 1280.0f;
+				if (widthRat > heightRat) {
+					wid = 1280;
+					hei = image.getHeight() / widthRat;
+				}
+				else {
+					wid = image.getWidth() / heightRat;
+					hei = 768;
+				}
+			}
+			image.draw(0, 0, wid, hei);
+		}
+	}
+	else {
+		/*shader.begin();
+		shader.setUniform1i("bytesPerPixel", pixels.getBytesPerPixel());
+		shader.setUniform1i("imageWidth", image.getWidth());
+		shader.setUniform1i("imageHeight", image.getHeight());
+		ofDrawRectangle(0, 0, image.getWidth(), image.getHeight());
+		shader.end();*/
 		image.draw(0, 0);
 	}
 	gui.draw();
+}
+
+void ofApp::loadImage(std::string fileName) {
+	texture.unbind();
+	sortedTexture.clear();
+	sortedTexture.unbind();
+
+	image.load("images/" + fileName);
+	currentFileName = fileName;
+	/*texture = image.getTexture();
+	texture.bindAsImage(0, GL_READ_ONLY);
+	sortedTexture = texture;
+	sortedTexture.bindAsImage(1, GL_WRITE_ONLY);*/
+	/*int wid = image.getWidth();
+	int hei = image.getHeight();
+	if (image.getWidth() > 1280 || image.getHeight() > 768) {
+		int heightRat = image.getHeight() / 768.0f;
+		int widthRat = image.getWidth() / 1280.0f;
+		if (widthRat > heightRat) {
+			wid = 1280;
+			hei = image.getHeight() / widthRat;
+		}
+		else {
+			wid = image.getWidth() / heightRat;
+			hei = 768;
+		}
+	}*/
+	ofSetWindowShape(image.getWidth() + guiWidth, image.getHeight());
+	resetGuiPosition();
+	pixels = image.getPixels();
+	if (useCompute) {
+		int bpp = pixels.getBytesPerPixel();
+		pixelAllocater.resize(image.getWidth() * image.getHeight());
+		pixels.mirror(true, false);
+		for (int i = 0; i < pixelAllocater.size(); i++) {
+			glm::vec3 & bufferPixel = pixelAllocater[i];
+			int y = int((float)i / (float)image.getWidth());
+			int x = i - y * image.getWidth();
+			ofColor color = pixels.getColor(x, y);
+			bufferPixel.r = color.r / 255.0f;
+			bufferPixel.g = color.g / 255.0f;
+			bufferPixel.b = color.b / 255.0f;
+		}
+		if (pixelsBuffer.isAllocated()) {
+			pixelsBuffer.invalidate();
+		}
+		pixelsBuffer.allocate(pixelAllocater, GL_DYNAMIC_DRAW);
+		pixelsBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 0);
+		//int bufferSize = image.getWidth() * image.getHeight() * sizeof(glm::uint);
+		//pixelsBuffer.allocate(image.getWidth() * image.getHeight() * 3, GL_READ_WRITE);
+		/*for (int i = 0; i < bufferSize; i++) {
+
+		}*/
+		//pixelsBuffer.bind(GL_PIXEL_UNPACK_BUFFER);
+	}
+	sortingIndex = 0;
+	started = false;
 }
 
 void ofApp::pixelSort() {
@@ -60,7 +183,7 @@ void ofApp::pixelSort() {
 			colorArray[c] = pixels[actualI + c];
 		}
 		color.set(colorArray[0], colorArray[1], colorArray[2]);
-		float value = getThresholdVariableFromColor(color, currentlySelectedThresholdVariable);
+		float value = color.getBrightness() / 255.0f;// getThresholdVariableFromColor(color, currentlySelectedThresholdVariable);
 		if (value >= threshold) {
 			if (startOfInterval == -1) {
 				startOfInterval = i;
@@ -109,7 +232,7 @@ void ofApp::pixelSort() {
 					colorArray[c] = pixels[actualJ + c];
 				}
 				color.set(colorArray[0], colorArray[1], colorArray[2]);
-				float val = getThresholdVariableFromColor(color, currentlySelectedThresholdVariable);
+				float val = color.getBrightness() / 255.0f;// getThresholdVariableFromColor(color, currentlySelectedThresholdVariable);
 				if (val > highestVal) {
 					highestVal = val;
 					indexOfHighest = actualJ;
@@ -146,11 +269,12 @@ int ofApp::getActualIndex(int index, int column, int bytesPerPixel, int imageWid
 		return index * bytesPerPixel;
 	}
 	else {
-		return (index * imageWidth * bytesPerPixel) + (column * bytesPerPixel);
+		return (index * imageWidth) + (column);
 	}
 }
 
 float ofApp::getThresholdVariableFromColor(ofColor color, std::string selectedVariable) {
+	return color.getBrightness() / 255.0f;
 	if (selectedVariable == BRIGHTNESS) {
 		return color.getBrightness() / 255.0f;
 	}
@@ -184,22 +308,6 @@ bool ofApp::clickedOnLabel(const void* sender) {
 	return true;
 }
 
-void ofApp::loadImage(std::string fileName) {
-	image.load("images/" + fileName);
-	ofSetWindowShape(image.getWidth() + guiWidth, image.getHeight());
-	resetGuiPosition();
-	pixels = image.getPixels();
-	if (useCompute) {
-		if (pixelsBuffer.isAllocated()) {
-			pixelsBuffer.invalidate();
-		}
-		pixelsBuffer.allocate(pixels, GL_READ_WRITE);
-		pixelsBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 0);
-	}
-	sortingIndex = 0;
-	started = false;
-}
-
 void ofApp::resetGuiPosition() {
 	gui.setPosition(ofGetWidth() - guiWidth, 10);
 }
@@ -209,6 +317,8 @@ void ofApp::setupGui() {
 	gui.setPosition(ofGetWidth() - guiWidth, 10);
 	gui.add(sortButton.setup("Sort"));
 	sortButton.addListener(this, &ofApp::start);
+	gui.add(saveButton.setup("Save Image"));
+	saveButton.addListener(this, &ofApp::saveCurrentImage);
 	gui.add(thresholdSlider.setup("Threshold", 0.5, 0.0, 1.0));
 	gui.add(horiztonalToggleLabel.setup((std::string) "Horzontal Sort"));
 	gui.add(horizontalToggle.setup("Horizontal"));
@@ -240,6 +350,19 @@ void ofApp::setupGui() {
 void ofApp::setupShaders() {
 	pixelSortCompute.setupShaderFromFile(GL_COMPUTE_SHADER, "shaders/pixelSort.compute");
 	pixelSortCompute.linkProgram();
+	shader.load("shaders/shader");
+}
+
+void ofApp::saveCurrentImage() {
+	if (image.isAllocated()) {
+		ofFilePath filePath;
+		std::string fileName = filePath.getBaseName(currentFileName);
+		std::string extension = "." + filePath.getFileExt(currentFileName);
+		std::string fullName = fileName + "1" + extension;
+		image.save("images/" + fullName);
+		currentFileName = fullName;
+	}
+	
 }
 
 //--------------------------------------------------------------

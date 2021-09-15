@@ -10,6 +10,7 @@ class ofApp : public ofBaseApp{
 	public:
 		void setup();
 		void update();
+		void convertVecToCharPixels(vector<unsigned char> &charVec, glm::vec3* vecPointer, int bytesPerPixel, int pixelsBufferSize);
 		void draw();
 		void pixelSort();
 		void swapPixels(ofPixels& pixels, int index1, int index2, int bytesPerPixel);
@@ -26,6 +27,8 @@ class ofApp : public ofBaseApp{
 		void setupGui();
 
 		void setupShaders();
+
+		void saveCurrentImage();
 
 		void keyPressed(int key);
 		void keyReleased(int key);
@@ -46,17 +49,23 @@ class ofApp : public ofBaseApp{
 		
 		ofDirectory directory;
 		ofImage image;
+		ofTexture texture;
+		ofTexture sortedTexture;
 		ofImage sortedImage;
 		ofPixels pixels;
+		ofFbo fbo;
 
 		ofShader pixelSortCompute;
 		ofBufferObject pixelsBuffer;
+		vector<glm::vec3> pixelAllocater;
+		ofShader shader;
 
 		ofxPanel gui;
 		int guiWidth = 200;
 		ofxFloatSlider thresholdSlider;
 		vector<ofxButton*> buttons;
 		ofxButton sortButton;
+		ofxButton saveButton;
 		ofxToggle horizontalToggle;
 		ofxToggle reverseSort;
 		ofxLabel reverseSortLabel;
@@ -65,6 +74,7 @@ class ofApp : public ofBaseApp{
 
 		int sortingIndex = 0;
 		bool started = false;
+		std::string currentFileName;
 
 		float threshold = 0.1f;
 		bool horizontal = false;

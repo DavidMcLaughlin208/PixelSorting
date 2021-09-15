@@ -1,70 +1,71 @@
 #version 440
 
+//layout(r8, binding = 0) uniform readonly image2D originalImage;
+//layout(r8, binding = 1) uniform readonly image2D sortedImage;
+
 layout(std430, binding = 0) buffer pixelBuffer {
-	uint pixels[];
+	vec3 pixels[];
 };
 
-uniform int maxIndex;
-uniform int widthOrHeight;
-uniform int imageHeight;
-uniform int imageWidth;
-uniform int bytesPerPixel;
+uniform uint maxIndex;
+uniform uint widthOrHeight;
+uniform uint imageHeight;
+uniform uint imageWidth;
+uniform uint bytesPerPixel;
 uniform bool horizontal;
 uniform bool reverse;
 uniform float threshold;
 
-int getActualIndex(int index, int column, int bytesPerPixel, int imageWidth, bool isHorizontal);
-void swapPixels(uint pixelSwapBuffer[4], int index1, int index2, int bytesPerPixel);
+uint getActualIndex(uint index, uint column, uint bytesPerPixel, uint imageWidth, bool isHorizontal);
+void swapPixels(uint pixelSwapBuffer[4], uint index1, uint index2, uint bytesPerPixel);
+vec3 rgb2hsv(vec3 c);
 
 
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 void main() {
+	vec3 pixel = pixels[gl_GlobalInvocationID.x];
+	pixels[gl_GlobalInvocationID.x] = vec3(min(pixel.r + 0.1, 1.0), min(1, pixel.g + 0.1), min(1,pixel.b + 0.1));
+	return;
 	if (gl_GlobalInvocationID.x > maxIndex) {
 		return;
 	}
 	uint pixelSwapBuffer[4];
-	uint colorArray[4];
+	//uint colorArray[4];
 
-	int start = 1;// gl_GlobalInvocationID.x;
-	int end;
-	int columnsOrRows;
+	uint start = gl_GlobalInvocationID.x;
+	uint end;
 	if (horizontal) {
 		end = (start + 1) * widthOrHeight;
-		columnsOrRows = imageHeight;
 	}
 	else {
 		end = imageHeight;
-		columnsOrRows = imageWidth;
 	}
 
 	float highestVal;
-	int indexOfHighest;
+	uint indexOfHighest;
 
-	int startOfInterval = -1;
-	int endOfInterval = -1;
+	uint startOfInterval = 0;
+	uint endOfInterval = 0;
+	bool intervalStarted = false;
 
-	uvec4 color = uvec4(0, 0, 0, 0);
+	vec3 color = vec3(0, 0, 0);
 
-	for (int i = start * widthOrHeight; i < end; i++) {
-		int actualI = getActualIndex(i, start, bytesPerPixel, imageWidth, horizontal);
-		for (int c = 0; c < bytesPerPixel; c++) {
-			colorArray[c] = pixels[actualI + c];
-		}
-		//color.xyz(colorArray[0], colorArray[1], colorArray[2]);
-		color.x = colorArray[0];
-		color.y = colorArray[1];
-		color.z = colorArray[2];
+	for (uint i = start * widthOrHeight; i < end; i++) {
+		uint actualI = getActualIndex(i, start, bytesPerPixel, imageWidth, horizontal);
+		vec3 pixel = pixels[actualI];
+		vec3 hsvColor = rgb2hsv(pixel);
 		//float value = getThresholdVariableFromColor(color, currentlySelectedThresholdVariable);
-		float value = 0.5;
+		float value = hsvColor.z;
 		if (value >= threshold) {
-			if (startOfInterval == -1) {
+			if (!intervalStarted) {
 				startOfInterval = i;
+				intervalStarted = true;
 				continue;
 			}
 			else {
 				// If we are above threshold and we already have a valid startOfInterval
 				// then we extend endOfInterval to the current index, we have special logic here 
-				// to ensure that if we are at the end of a row we start the currently started interval
+				// to ensure that if we are at the end of a row we sort the currently started interval
 				endOfInterval = i;
 				if (!(i == end - 1)) {
 					continue;
@@ -75,7 +76,7 @@ void main() {
 			}
 		}
 		else {
-			if (startOfInterval == -1) {
+			if (!intervalStarted) {
 				// If we are under threshold and there is no start of interval then there is nothing to do here
 				continue;
 			}
@@ -86,29 +87,23 @@ void main() {
 			}
 		}
 
-		for (int s = startOfInterval; s <= endOfInterval; s++) {
-			int modS = s;
+		for (uint s = startOfInterval; s <= endOfInterval; s++) {
+			uint modS = s;
 			if (reverse) {
 				modS = endOfInterval - s + startOfInterval;
 			}
-			int actualS = getActualIndex(modS, start, bytesPerPixel, imageWidth, horizontal);
+			uint actualS = getActualIndex(modS, start, bytesPerPixel, imageWidth, horizontal);
 			indexOfHighest = actualS;
 			highestVal = -1;
-			for (int j = s; j <= endOfInterval; j++) {
-				int modJ = j;
+			for (uint j = s; j <= endOfInterval; j++) {
+				uint modJ = j;
 				if (reverse) {
 					modJ = endOfInterval - j + startOfInterval;
 				}
-				int actualJ = getActualIndex(modJ, start, bytesPerPixel, imageWidth, horizontal);
-				for (int c = 0; c < bytesPerPixel; c++) {
-					colorArray[c] = pixels[actualJ + c];
-				}
-				//color.xyz(colorArray[0], colorArray[1], colorArray[2]);
-				color.x = colorArray[0];
-				color.y = colorArray[1];
-				color.z = colorArray[2];
-				//float val = getThresholdVariableFromColor(color, currentlySelectedThresholdVariable);
-				float val = 0.5;
+				uint actualJ = getActualIndex(modJ, start, bytesPerPixel, imageWidth, horizontal);
+				vec3 pixel = pixels[actualJ];
+				vec3 hsvColor = rgb2hsv(pixel);
+				float val = hsvColor.z;
 				if (val > highestVal) {
 					highestVal = val;
 					indexOfHighest = actualJ;
@@ -116,29 +111,46 @@ void main() {
 			}
 			swapPixels(pixelSwapBuffer, actualS, indexOfHighest, bytesPerPixel);
 		}
-		startOfInterval = -1;
-		endOfInterval = -1;
+		startOfInterval = 0;
+		endOfInterval = 0;
+		intervalStarted = false;
 	}
 
 }
 
-int getActualIndex(int index, int column, int bytesPerPixel, int imageWidth, bool isHorizontal) {
+uint getActualIndex(uint index, uint column, uint bytesPerPixel, uint imageWidth, bool isHorizontal) {
 	if (isHorizontal) {
-		return index * bytesPerPixel;
+		return index;
 	}
 	else {
-		return (index * imageWidth * bytesPerPixel) + (column * bytesPerPixel);
+		return (index * imageWidth) + (column * bytesPerPixel);
 	}
 }
 
-void swapPixels(uint pixelSwapBuffer[4], int index1, int index2, int bytesPerPixel) {
-	for (int c = 0; c < bytesPerPixel; c++) {
-		pixelSwapBuffer[c] = pixels[index1 + c];
-	}
-	for (int c = 0; c < bytesPerPixel; c++) {
-		pixels[index1 + c] = pixels[index2 + c];
-	}
-	for (int c = 0; c < bytesPerPixel; c++) {
-		pixels[index2 + c] = pixelSwapBuffer[c];
-	}
+void swapPixels(uint pixelSwapBuffer[4], uint index1, uint index2, uint bytesPerPixel) {
+	vec3 temp = pixels[index1];
+	pixels[index1] = pixels[index2];
+	pixels[index2] = temp;
+	//for (int c = 0; c < bytesPerPixel; c++) {
+	//	pixelSwapBuffer[c] = pixels[index1 + c];
+	//}
+	//for (int c = 0; c < bytesPerPixel; c++) {
+	//	pixels[index1 + c] = pixels[index2 + c];
+	//}
+	//for (int c = 0; c < bytesPerPixel; c++) {
+	//	pixels[index2 + c] = pixelSwapBuffer[c];
+	//}
+}
+
+// From https://stackoverflow.com/questions/15095909/from-rgb-to-hsv-in-opengl-glsl
+// All components are in the range [0…1], including hue.
+vec3 rgb2hsv(vec3 c)
+{
+	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+	vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+	vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+
+	float d = q.x - min(q.w, q.y);
+	float e = 1.0e-10;
+	return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
 }
