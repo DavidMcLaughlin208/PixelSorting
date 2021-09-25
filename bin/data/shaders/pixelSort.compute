@@ -17,19 +17,24 @@ uniform bool reverse;
 uniform float threshold;
 
 uint getActualIndex(uint index, uint column, uint bytesPerPixel, uint imageWidth, bool isHorizontal);
-void swapPixels(uint pixelSwapBuffer[4], uint index1, uint index2, uint bytesPerPixel);
+void swapPixels(uint index1, uint index2);
 vec3 rgb2hsv(vec3 c);
 
 
 layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 void main() {
-	vec3 pixel = pixels[gl_GlobalInvocationID.x];
-	pixels[gl_GlobalInvocationID.x] = vec3(min(pixel.r + 0.1, 1.0), min(1, pixel.g + 0.1), min(1,pixel.b + 0.1));
-	return;
-	if (gl_GlobalInvocationID.x > maxIndex) {
+	
+	if (gl_LocalInvocationIndex < maxIndex) {
 		return;
 	}
-	uint pixelSwapBuffer[4];
+	if (gl_LocalInvocationIndex % 2 == 0) {
+		swapPixels(gl_GlobalInvocationID.x, gl_GlobalInvocationID.x + 1);
+	}
+	return;
+	/*vec3 pixel = pixels[gl_GlobalInvocationID.x];
+	pixels[gl_GlobalInvocationID.x] = vec3(min(1, pixel.r + 0.1), min(1, pixel.g + 0.1), min(1,pixel.b + 0.1));
+	return;*/
+	//uint pixelSwapBuffer[4];
 	//uint colorArray[4];
 
 	uint start = gl_GlobalInvocationID.x;
@@ -52,10 +57,14 @@ void main() {
 
 	for (uint i = start * widthOrHeight; i < end; i++) {
 		uint actualI = getActualIndex(i, start, bytesPerPixel, imageWidth, horizontal);
+		uint actualI2 = getActualIndex(i + 1, start, bytesPerPixel, imageWidth, horizontal);
+
+		swapPixels(actualI, actualI2);
+		continue;
 		vec3 pixel = pixels[actualI];
 		vec3 hsvColor = rgb2hsv(pixel);
 		//float value = getThresholdVariableFromColor(color, currentlySelectedThresholdVariable);
-		float value = hsvColor.z;
+		float value = pixel.r;// hsvColor.z;
 		if (value >= threshold) {
 			if (!intervalStarted) {
 				startOfInterval = i;
@@ -103,13 +112,13 @@ void main() {
 				uint actualJ = getActualIndex(modJ, start, bytesPerPixel, imageWidth, horizontal);
 				vec3 pixel = pixels[actualJ];
 				vec3 hsvColor = rgb2hsv(pixel);
-				float val = hsvColor.z;
+				float val = pixel.r;// hsvColor.z;
 				if (val > highestVal) {
 					highestVal = val;
 					indexOfHighest = actualJ;
 				}
 			}
-			swapPixels(pixelSwapBuffer, actualS, indexOfHighest, bytesPerPixel);
+			swapPixels(actualS, indexOfHighest);
 		}
 		startOfInterval = 0;
 		endOfInterval = 0;
@@ -127,7 +136,7 @@ uint getActualIndex(uint index, uint column, uint bytesPerPixel, uint imageWidth
 	}
 }
 
-void swapPixels(uint pixelSwapBuffer[4], uint index1, uint index2, uint bytesPerPixel) {
+void swapPixels(uint index1, uint index2) {
 	vec3 temp = pixels[index1];
 	pixels[index1] = pixels[index2];
 	pixels[index2] = temp;

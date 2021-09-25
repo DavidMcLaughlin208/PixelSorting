@@ -79,7 +79,7 @@ class ofApp : public ofBaseApp{
 		float threshold = 0.1f;
 		bool horizontal = false;
 		bool reverse = false;
-		bool useCompute = true;
+		bool useCompute = false;
 
 		// Threshold parameter radio buttons
 		ofxButton brightnessRadio;

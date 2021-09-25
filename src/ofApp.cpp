@@ -19,7 +19,7 @@ void ofApp::update() {
 			int widthOrHeight = this->horizontal ? image.getWidth() : 0;
 			pixelSortCompute.begin();
 			pixelSortCompute.setUniform1i("maxIndex", maxIndex);
-			pixelSortCompute.setUniform1i("widthOrHeight", maxIndex);
+			pixelSortCompute.setUniform1i("widthOrHeight", widthOrHeight);
 			pixelSortCompute.setUniform1i("imageHeight", image.getHeight());
 			pixelSortCompute.setUniform1i("imageWidth", image.getWidth());
 			pixelSortCompute.setUniform1i("bytesPerPixel", pixels.getBytesPerPixel());
@@ -36,6 +36,7 @@ void ofApp::update() {
 			unsigned char* startOfPixels = &(charVec[0]);
 			pixels.setFromPixels(startOfPixels, image.getWidth(), image.getHeight(), pixels.getPixelFormat());
 			pixelsBuffer.unmap();
+			pixels.mirror(false, true);
 			image.setFromPixels(pixels);
 		}
 		else {
@@ -47,9 +48,6 @@ void ofApp::update() {
 void ofApp::convertVecToCharPixels(vector<unsigned char> &charVec, glm::vec3* vecPointer, int bytesPerPixel, int size) {
 	charVec.resize(size * bytesPerPixel);
 	for (int i = 0; i < size; i++) {
-		if (i == 27648) {
-			int p = 0;
-		}
 		glm::vec3 vecPixel = vecPointer[i];
 		int scaledI = charVec.size() - bytesPerPixel - (i * bytesPerPixel);
 		charVec[scaledI] = vecPixel.r * 255.0f;
@@ -90,15 +88,17 @@ void ofApp::draw() {
 		shader.setUniform1i("imageHeight", image.getHeight());
 		ofDrawRectangle(0, 0, image.getWidth(), image.getHeight());
 		shader.end();*/
-		image.draw(0, 0);
+		if (image.isAllocated()) {
+			image.draw(0, 0);
+		}
 	}
 	gui.draw();
 }
 
 void ofApp::loadImage(std::string fileName) {
-	texture.unbind();
+	/*texture.unbind();
 	sortedTexture.clear();
-	sortedTexture.unbind();
+	sortedTexture.unbind();*/
 
 	image.load("images/" + fileName);
 	currentFileName = fileName;
@@ -183,7 +183,20 @@ void ofApp::pixelSort() {
 			colorArray[c] = pixels[actualI + c];
 		}
 		color.set(colorArray[0], colorArray[1], colorArray[2]);
-		float value = color.getBrightness() / 255.0f;// getThresholdVariableFromColor(color, currentlySelectedThresholdVariable);
+		float value;
+		//Inlining this beccause separating as a function is really slow
+		if (currentlySelectedThresholdVariable == BRIGHTNESS) {
+			value = color.getBrightness() / 255.0f;
+		}
+		else if (currentlySelectedThresholdVariable == LIGHTNESS) {
+			value = color.getLightness() / 255.0f;
+		}
+		else if (currentlySelectedThresholdVariable == HUE) {
+			value = color.getHue() / 255.0f;
+		}
+		else if (currentlySelectedThresholdVariable == SATURATION) {
+			value = color.getSaturation() / 255.0f;
+		}
 		if (value >= threshold) {
 			if (startOfInterval == -1) {
 				startOfInterval = i;
@@ -219,7 +232,14 @@ void ofApp::pixelSort() {
 			if (reverse) {
 				modS = endOfInterval - s + startOfInterval;
 			}
-			int actualS = getActualIndex(modS, start, bytesPerPixel, image.getWidth(), this->horizontal);
+			//Inlining this function because c++
+			int actualS;// = getActualIndex(modS, start, bytesPerPixel, image.getWidth(), this->horizontal);
+			if (this->horizontal) {
+				actualS = modS * bytesPerPixel;
+			}
+			else {
+				actualS = modS * image.getWidth() * bytesPerPixel + (start * bytesPerPixel);
+			}
 			indexOfHighest = actualS;
 			highestVal = -1;
 			for (int j = s; j <= endOfInterval; j++) {
@@ -227,18 +247,46 @@ void ofApp::pixelSort() {
 				if (reverse) {
 					modJ = endOfInterval - j + startOfInterval;
 				}
-				int actualJ = getActualIndex(modJ, start, bytesPerPixel, image.getWidth(), this->horizontal);
+				//Inlining this function because c++
+				int actualJ;// = getActualIndex(modJ, start, bytesPerPixel, image.getWidth(), this->horizontal);
+				if (this->horizontal) {
+					actualJ = modJ * bytesPerPixel;
+				}
+				else {
+					actualJ = modJ * image.getWidth() * bytesPerPixel + (start * bytesPerPixel);
+				}
 				for (int c = 0; c < bytesPerPixel; c++) {
 					colorArray[c] = pixels[actualJ + c];
 				}
-				color.set(colorArray[0], colorArray[1], colorArray[2]);
-				float val = color.getBrightness() / 255.0f;// getThresholdVariableFromColor(color, currentlySelectedThresholdVariable);
+				color.set(pixels[actualJ + 0], pixels[actualJ + 1], pixels[actualJ + 2]);
+				float val;
+				if (currentlySelectedThresholdVariable == BRIGHTNESS) {
+					val = color.getBrightness() / 255.0f;
+				}
+				else if (currentlySelectedThresholdVariable == LIGHTNESS) {
+					val = color.getLightness() / 255.0f;
+				}
+				else if (currentlySelectedThresholdVariable == HUE) {
+					val = color.getHue() / 255.0f;
+				}
+				else if (currentlySelectedThresholdVariable == SATURATION) {
+					val = color.getSaturation() / 255.0f;
+				}
 				if (val > highestVal) {
 					highestVal = val;
 					indexOfHighest = actualJ;
 				}
 			}
-			swapPixels(pixels, actualS, indexOfHighest, bytesPerPixel);
+			for (int c = 0; c < bytesPerPixel; c++) {
+				pixelSwapBuffer[c] = pixels[actualS + c];
+			}
+			for (int c = 0; c < bytesPerPixel; c++) {
+				pixels[actualS + c] = pixels[indexOfHighest + c];
+			}
+			for (int c = 0; c < bytesPerPixel; c++) {
+				pixels[indexOfHighest + c] = pixelSwapBuffer[c];
+			}
+			//swapPixels(pixels, actualS, indexOfHighest, bytesPerPixel);
 		}
 		startOfInterval = -1;
 		endOfInterval = -1;
@@ -269,7 +317,7 @@ int ofApp::getActualIndex(int index, int column, int bytesPerPixel, int imageWid
 		return index * bytesPerPixel;
 	}
 	else {
-		return (index * imageWidth) + (column);
+		return (index * imageWidth * bytesPerPixel) + (column * bytesPerPixel);
 	}
 }
 
