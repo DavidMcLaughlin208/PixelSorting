@@ -13,6 +13,7 @@ class ofApp : public ofBaseApp{
 		void convertVecToCharPixels(vector<unsigned char> &charVec, glm::vec3* vecPointer, int bytesPerPixel, int pixelsBufferSize);
 		void draw();
 		void pixelSort();
+		//void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth, int imageHeight, ofPixels pixelsRef, std::string thresholdName, float threshold);
 		void swapPixels(ofPixels& pixels, int index1, int index2, int bytesPerPixel);
 		int getActualIndex(int index, int column, int bytesPerPixel, int imageWidth, bool isHorizontal);
 		float getThresholdVariableFromColor(ofColor color, std::string selectedVariable);
@@ -42,10 +43,10 @@ class ofApp : public ofBaseApp{
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
 
-		std::string BRIGHTNESS = "Brightness";
-		std::string LIGHTNESS = "Lightness";
-		std::string HUE = "Hue";
-		std::string SATURATION = "Saturation";
+		static std::string BRIGHTNESS;
+		static std::string LIGHTNESS;
+		static std::string HUE;
+		static std::string SATURATION;
 		
 		ofDirectory directory;
 		ofImage image;
@@ -80,6 +81,10 @@ class ofApp : public ofBaseApp{
 		bool horizontal = false;
 		bool reverse = false;
 		bool useCompute = false;
+		bool useThreads = true;
+
+		int threadCount = 10;
+		ofxIntSlider threadCountSlider;
 
 		// Threshold parameter radio buttons
 		ofxButton brightnessRadio;

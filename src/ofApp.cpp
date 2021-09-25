@@ -1,5 +1,156 @@
 #include "ofApp.h"
 
+std::string ofApp::BRIGHTNESS = "Brightness";
+std::string ofApp::LIGHTNESS = "Lightness";
+std::string ofApp::HUE = "Hue";
+std::string ofApp::SATURATION = "Saturation";
+
+void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth, int imageHeight, ofPixels& pixelsRef, std::string thresholdName, float threshold) {
+	//ofPixels pixelsRef = *pixels;
+	int widthOrHeight;
+	int start = startIndex;
+	int end;
+	int columnsOrRows;
+	if (horizontal) {
+		widthOrHeight = imageWidth;
+		end = (start + 1) * widthOrHeight;
+		columnsOrRows = imageHeight;
+	}
+	else {
+		widthOrHeight = 0;
+		end = imageHeight;
+		columnsOrRows = imageWidth;
+	}
+	float highestVal;
+	int indexOfHighest;
+
+	int bytesPerPixel = pixelsRef.getBytesPerPixel();
+
+	int startOfInterval = -1;
+	int endOfInterval = -1;
+
+	ofColor color;
+	//char colorArray[4];
+	char pixelSwapBuffer[4];
+	for (int i = start * widthOrHeight; i < end; i++) {
+		int actualI;// = getActualIndex(i, start, bytesPerPixel, image.getWidth(), this->horizontal);
+		if (horizontal) {
+			actualI = i * bytesPerPixel;
+		}
+		else {
+			actualI = i * imageWidth * bytesPerPixel + (start * bytesPerPixel);
+		}
+		color.set(pixelsRef[actualI + 0], pixelsRef[actualI + 1], pixelsRef[actualI + 2]);
+		float value;
+		//Inlining this beccause separating as a function is really slow
+		if (thresholdName == ofApp::BRIGHTNESS) {
+			value = color.getBrightness() / 255.0f;
+		}
+		else if (thresholdName == ofApp::LIGHTNESS) {
+			value = color.getLightness() / 255.0f;
+		}
+		else if (thresholdName == ofApp::HUE) {
+			value = color.getHue() / 255.0f;
+		}
+		else if (thresholdName == ofApp::SATURATION) {
+			value = color.getSaturation() / 255.0f;
+		}
+		if (value >= threshold) {
+			if (startOfInterval == -1) {
+				startOfInterval = i;
+				continue;
+			}
+			else {
+				// If we are above threshold and we already have a valid startOfInterval
+				// then we extend endOfInterval to the current index, we have special logic here 
+				// to ensure that if we are at the end of a row we start the currently started interval
+				endOfInterval = i;
+				if (!(i == end - 1)) {
+					continue;
+				}
+				else {
+					// this is the end of a row or column so we will sort this interval
+				}
+			}
+		}
+		else {
+			if (startOfInterval == -1) {
+				// If we are under threshold and there is no start of interval then there is nothing to do here
+				continue;
+			}
+			else {
+				// If we are below threshold and we have a valid startOfInterval index
+				// then this means that we have found our interval and we will move on
+				// to sort that interval in the following nested loop
+			}
+		}
+
+		for (int s = startOfInterval; s <= endOfInterval; s++) {
+			int modS = s;
+			if (reverse) {
+				modS = endOfInterval - s + startOfInterval;
+			}
+			//Inlining this function because c++
+			int actualS;// = getActualIndex(modS, start, bytesPerPixel, image.getWidth(), this->horizontal);
+			if (horizontal) {
+				actualS = modS * bytesPerPixel;
+			}
+			else {
+				actualS = modS * imageWidth * bytesPerPixel + (start * bytesPerPixel);
+			}
+			indexOfHighest = actualS;
+			highestVal = -1;
+			for (int j = s; j <= endOfInterval; j++) {
+				int modJ = j;
+				if (reverse) {
+					modJ = endOfInterval - j + startOfInterval;
+				}
+				//Inlining this function because c++
+				int actualJ;// = getActualIndex(modJ, start, bytesPerPixel, image.getWidth(), this->horizontal);
+				if (horizontal) {
+					actualJ = modJ * bytesPerPixel;
+				}
+				else {
+					actualJ = modJ * imageWidth * bytesPerPixel + (start * bytesPerPixel);
+				}
+				/*for (int c = 0; c < bytesPerPixel; c++) {
+					colorArray[c] = pixelsRef[actualJ + c];
+				}*/
+				color.set(pixelsRef[actualJ + 0], pixelsRef[actualJ + 1], pixelsRef[actualJ + 2]);
+				float val;
+				if (thresholdName == ofApp::BRIGHTNESS) {
+					val = color.getBrightness() / 255.0f;
+				}
+				else if (thresholdName == ofApp::LIGHTNESS) {
+					val = color.getLightness() / 255.0f;
+				}
+				else if (thresholdName == ofApp::HUE) {
+					val = color.getHue() / 255.0f;
+				}
+				else if (thresholdName == ofApp::SATURATION) {
+					val = color.getSaturation() / 255.0f;
+				}
+				if (val > highestVal) {
+					highestVal = val;
+					indexOfHighest = actualJ;
+				}
+			}
+			for (int c = 0; c < bytesPerPixel; c++) {
+				pixelSwapBuffer[c] = pixelsRef[actualS + c];
+			}
+			for (int c = 0; c < bytesPerPixel; c++) {
+				pixelsRef[actualS + c] = pixelsRef[indexOfHighest + c];
+			}
+			for (int c = 0; c < bytesPerPixel; c++) {
+				pixelsRef[indexOfHighest + c] = pixelSwapBuffer[c];
+			}
+			//swapPixels(pixels, actualS, indexOfHighest, bytesPerPixel);
+		}
+		startOfInterval = -1;
+		endOfInterval = -1;
+	}
+}
+
 //--------------------------------------------------------------
 void ofApp::setup() {
 	setupGui();
@@ -13,6 +164,7 @@ void ofApp::update() {
 	threshold = thresholdSlider;
 	horizontal = horizontalToggle;
 	reverse = reverseSort;
+	threadCount = threadCountSlider;
 	if (started) {
 		if (useCompute) {
 			int maxIndex = this->horizontal ? image.getHeight() : image.getWidth();
@@ -40,7 +192,26 @@ void ofApp::update() {
 			image.setFromPixels(pixels);
 		}
 		else {
-			pixelSort();
+			if (useThreads) {
+				vector<std::thread> threadList;
+				for (int i = 0; i < threadCount; i++) {
+					//std::thread newThread(pixelSortRow, sortingIndex, this->horizontal, this->reverse, image.getWidth(), image.getHeight(), pixels, currentlySelectedThresholdVariable, threshold);
+					threadList.push_back(std::thread(pixelSortRow, sortingIndex, this->horizontal, this->reverse, image.getWidth(), image.getHeight(), std::ref(pixels), currentlySelectedThresholdVariable, threshold));
+					sortingIndex += 1;
+					int columnsOrRows = this->horizontal ? image.getHeight() : image.getWidth();
+					if (sortingIndex >= columnsOrRows - 1) {
+						sortingIndex = 0;
+						started = false;
+					}
+				}
+				for (int i = 0; i < threadList.size(); i++) {
+					threadList[i].join();
+				}
+				image.setFromPixels(pixels);
+			} else {
+				pixelSort();
+			}
+			
 		}
 	}
 }
@@ -66,7 +237,7 @@ void ofApp::draw() {
 
 			int wid = image.getWidth();
 			int hei = image.getHeight();
-			if (image.getWidth() > 1280 || image.getHeight() > 768) {
+			/*if (image.getWidth() > 1280 || image.getHeight() > 768) {
 				int heightRat = image.getHeight() / 768.0f;
 				int widthRat = image.getWidth() / 1280.0f;
 				if (widthRat > heightRat) {
@@ -77,7 +248,7 @@ void ofApp::draw() {
 					wid = image.getWidth() / heightRat;
 					hei = 768;
 				}
-			}
+			}*/
 			image.draw(0, 0, wid, hei);
 		}
 	}
@@ -176,13 +347,16 @@ void ofApp::pixelSort() {
 	int endOfInterval = -1;
 
 	ofColor color;
-	char colorArray[4];
+	//char colorArray[4];
 	for (int i = start * widthOrHeight; i < end; i++) {
-		int actualI = getActualIndex(i, start, bytesPerPixel, image.getWidth(), this->horizontal);
-		for (int c = 0; c < bytesPerPixel; c++) {
-			colorArray[c] = pixels[actualI + c];
+		int actualI;// = getActualIndex(i, start, bytesPerPixel, image.getWidth(), this->horizontal);
+		if (this->horizontal) {
+			actualI = i * bytesPerPixel;
 		}
-		color.set(colorArray[0], colorArray[1], colorArray[2]);
+		else {
+			actualI = i * image.getWidth() * bytesPerPixel + (start * bytesPerPixel);
+		}
+		color.set(pixels[actualI + 0], pixels[actualI + 1], pixels[actualI + 2]);
 		float value;
 		//Inlining this beccause separating as a function is really slow
 		if (currentlySelectedThresholdVariable == BRIGHTNESS) {
@@ -255,9 +429,9 @@ void ofApp::pixelSort() {
 				else {
 					actualJ = modJ * image.getWidth() * bytesPerPixel + (start * bytesPerPixel);
 				}
-				for (int c = 0; c < bytesPerPixel; c++) {
+				/*for (int c = 0; c < bytesPerPixel; c++) {
 					colorArray[c] = pixels[actualJ + c];
-				}
+				}*/
 				color.set(pixels[actualJ + 0], pixels[actualJ + 1], pixels[actualJ + 2]);
 				float val;
 				if (currentlySelectedThresholdVariable == BRIGHTNESS) {
@@ -299,6 +473,8 @@ void ofApp::pixelSort() {
 	}
 	image.setFromPixels(pixels);
 }
+
+
 
 void ofApp::swapPixels(ofPixels &pixels, int index1, int index2, int bytesPerPixel) {
 	for (int c = 0; c < bytesPerPixel; c++) {
@@ -372,6 +548,7 @@ void ofApp::setupGui() {
 	gui.add(horizontalToggle.setup("Horizontal"));
 	gui.add(reverseSortLabel.setup((string)"Reverse Direction"));
 	gui.add(reverseSort.setup("Reverse Sort"));
+	gui.add(threadCountSlider.setup("Thread Count", 10, 0, 100));
 
 	currentlySelectedThresholdVariable = BRIGHTNESS;
 	gui.add(selectedThresholdVariable.setup((string)"Sorting by: " + currentlySelectedThresholdVariable));
@@ -467,3 +644,6 @@ void ofApp::gotMessage(ofMessage msg){
 void ofApp::dragEvent(ofDragInfo dragInfo){ 
 
 }
+
+
+
