@@ -12,12 +12,19 @@
 class ofApp : public ofBaseApp{
 
 	public:
+		enum class Mode {
+			None,
+			Image,
+			Video
+		};
+
 		void setup();
 		void update();
 		void convertVecToCharPixels(vector<unsigned char> &charVec, glm::vec3* vecPointer, int bytesPerPixel, int pixelsBufferSize);
 		void draw();
 		void pixelSort();
-		//void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth, int imageHeight, ofPixels pixelsRef, std::string thresholdName, float threshold);
+		
+		void saveFrameToVideo();
 		void swapPixels(ofPixels& pixels, int index1, int index2, int bytesPerPixel);
 		int getActualIndex(int index, int column, int bytesPerPixel, int imageWidth, bool isHorizontal);
 		float getThresholdVariableFromColor(ofColor color, std::string selectedVariable);
@@ -86,6 +93,7 @@ class ofApp : public ofBaseApp{
 		bool reverse = false;
 		bool useCompute = false;
 		bool useThreads = true;
+		bool sortComplete = false;
 
 		int threadCount = 10;
 		ofxIntSlider threadCountSlider;
@@ -110,5 +118,5 @@ class ofApp : public ofBaseApp{
 		std::string currentlySelectedThresholdVariable;
 		ofxLabel selectedThresholdVariable;
 
-
+		Mode currentMode = Mode::None;
 };

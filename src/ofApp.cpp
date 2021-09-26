@@ -148,11 +148,11 @@ void ofApp::setup() {
 	setupGui();
 	setupShaders();
 
-	videoExtensions.insert("mp4");
-	videoExtensions.insert("mov");
+	videoExtensions.insert(".mp4");
+	videoExtensions.insert(".mov");
 
-	imageExtensions.insert("png");
-	imageExtensions.insert("jpg");
+	imageExtensions.insert(".png");
+	imageExtensions.insert(".jpg");
 
 }
 
@@ -164,73 +164,71 @@ void ofApp::update() {
 	reverse = reverseSort;
 	threadCount = threadCountSlider;
 	if (started) {
-		if (useCompute) {
-			int maxIndex = this->horizontal ? image.getHeight() : image.getWidth();
-			int widthOrHeight = this->horizontal ? image.getWidth() : 0;
-			pixelSortCompute.begin();
-			pixelSortCompute.setUniform1i("maxIndex", maxIndex);
-			pixelSortCompute.setUniform1i("widthOrHeight", widthOrHeight);
-			pixelSortCompute.setUniform1i("imageHeight", image.getHeight());
-			pixelSortCompute.setUniform1i("imageWidth", image.getWidth());
-			pixelSortCompute.setUniform1i("bytesPerPixel", pixels.getBytesPerPixel());
-			pixelSortCompute.setUniform1i("reverse", this->reverse);
-			pixelSortCompute.setUniform1i("horizontal", this->horizontal);
-			pixelSortCompute.setUniform1f("threshold", this->threshold);
-			pixelSortCompute.dispatchCompute((image.getHeight() * image.getWidth() + 1024 - 1) / 1024, 1, 1);
-			pixelSortCompute.end();
-			started = false;
+		vector<std::thread> threadList;
+		for (int i = 0; i < threadCount; i++) {
+			threadList.push_back(std::thread(pixelSortRow, sortingIndex, this->horizontal, this->reverse, image.getWidth(), image.getHeight(), std::ref(pixels), currentlySelectedThresholdVariable, threshold));
+			sortingIndex += 1;
 
-			glm::vec3* updatedPixels = pixelsBuffer.map<glm::vec3>(GL_READ_WRITE);
-			vector<unsigned char> charVec;
-			convertVecToCharPixels(charVec, updatedPixels, pixels.getBytesPerPixel(), image.getWidth() * image.getHeight());
-			unsigned char* startOfPixels = &(charVec[0]);
-			pixels.setFromPixels(startOfPixels, image.getWidth(), image.getHeight(), pixels.getPixelFormat());
-			pixelsBuffer.unmap();
-			pixels.mirror(false, true);
-			image.setFromPixels(pixels);
-		}
-		else {
-			if (useThreads) {
-				vector<std::thread> threadList;
-				for (int i = 0; i < threadCount; i++) {
-					threadList.push_back(std::thread(pixelSortRow, sortingIndex, this->horizontal, this->reverse, image.getWidth(), image.getHeight(), std::ref(pixels), currentlySelectedThresholdVariable, threshold));
-					sortingIndex += 1;
-					int columnsOrRows = this->horizontal ? image.getHeight() : image.getWidth();
-					if (sortingIndex >= columnsOrRows - 1) {
-						sortingIndex = 0;
-						started = false;
-						timeEnd = std::chrono::high_resolution_clock::now();
+			int columnsOrRows = this->horizontal ? image.getHeight() : image.getWidth();
+			if (sortingIndex >= columnsOrRows - 1) {
+				sortingIndex = 0;
+				sortComplete = true;
+				timeEnd = std::chrono::high_resolution_clock::now();
 
-						long timeTaken = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeStart).count();
-						std::cout << "Thread Count of " << threadCount << " took " << timeTaken << " milliseconds." << std::endl;
-						break;
-					}
-				}
-				for (int i = 0; i < threadList.size(); i++) {
-					threadList[i].join();
-				}
-				image.setFromPixels(pixels);
-			} else {
-				pixelSort();
-			}
-			int size = image.getWidth() * image.getHeight();
-			int bpp = pixels.getBytesPerPixel();
-			cv::Mat mat;
-			mat = cv::Mat_<cv::Vec3b>(image.getHeight(), image.getWidth());
-			for (int i = 0; i < size; i++) {
-				int actualI = i * bpp;
-				int y = int((float)i / (float)image.getWidth());
-				int x = i - y * image.getWidth();
-				mat.at<cv::Vec3b>(y, x)[0] = pixels[actualI + 2];
-				mat.at<cv::Vec3b>(y, x)[1] = pixels[actualI + 1];
-				mat.at<cv::Vec3b>(y, x)[2] = pixels[actualI + 0];
-			}
-			videoWriter.write(mat);
-			if (!started) {
-				videoWriter.release();
+				long timeTaken = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeStart).count();
+				std::cout << "Thread Count of " << threadCount << " took " << timeTaken << " milliseconds." << std::endl;
+				break;
 			}
 		}
+		for (int i = 0; i < threadList.size(); i++) {
+			threadList[i].join();
+		}
+		image.setFromPixels(pixels);
+
+
+
+		if (sortComplete) {
+			sortComplete = false;
+			if (currentMode == Mode::Image) {
+				started = false;
+			}
+			else if (currentMode == Mode::Video) {
+				saveFrameToVideo();
+				if (videoPlayer.getCurrentFrame() == videoPlayer.getTotalNumFrames()) {
+					videoPlayer.close();
+					videoWriter.release();
+					started = false;
+					std::cout << "Completed sorting video" << std::endl;
+				}
+				else {
+					videoPlayer.nextFrame();
+					pixels = videoPlayer.getPixels();
+					image.clear();
+					image.setFromPixels(pixels);
+					std::cout << "Starting frame " << videoPlayer.getCurrentFrame() << " out of " << videoPlayer.getTotalNumFrames() << std::endl;
+					timeStart = std::chrono::high_resolution_clock::now();
+				}
+			}
+		}
+
+		
 	}
+}
+
+void ofApp::saveFrameToVideo() {
+	int size = image.getWidth() * image.getHeight();
+	int bpp = pixels.getBytesPerPixel();
+	cv::Mat mat;
+	mat = cv::Mat_<cv::Vec3b>(image.getHeight(), image.getWidth());
+	for (int i = 0; i < size; i++) {
+		int actualI = i * bpp;
+		int y = int((float)i / (float)image.getWidth());
+		int x = i - y * image.getWidth();
+		mat.at<cv::Vec3b>(y, x)[0] = pixels[actualI + 2];
+		mat.at<cv::Vec3b>(y, x)[1] = pixels[actualI + 1];
+		mat.at<cv::Vec3b>(y, x)[2] = pixels[actualI + 0];
+	}
+	videoWriter.write(mat);
 }
 
 void ofApp::convertVecToCharPixels(vector<unsigned char> &charVec, glm::vec3* vecPointer, int bytesPerPixel, int size) {
@@ -259,10 +257,10 @@ void ofApp::draw() {
 				int widthRat = image.getWidth() / 1280.0f;
 				if (widthRat > heightRat) {
 					wid = 1280;
-					hei = image.getHeight() / widthRat;
+					hei = image.getHeight() / heightRat;
 				}
 				else {
-					wid = image.getWidth() / heightRat;
+					wid = image.getWidth() / widthRat;
 					hei = 768;
 				}
 			}*/
@@ -278,62 +276,56 @@ void ofApp::draw() {
 }
 
 void ofApp::loadImage(std::string fileName) {
-	/*ofFilePath filePath;
-	std::string fileName = filePath.getBaseName(fileName);
-	std::string extension = "." + filePath.getFileExt(currentFileName);
+	videoPlayer.close();
+	image.clear();
+	ofFilePath filePath;
+	std::string extension = "." + filePath.getFileExt(fileName);
+
 	if (imageExtensions.find(extension) != imageExtensions.end()) {
 		image.load("images/" + fileName);
-	}*/
-	image.load("images/" + fileName);
+		pixels = image.getPixels();
+		currentMode = Mode::Image;
+	}
+	else if (videoExtensions.find(extension) != videoExtensions.end()) {
+		if (videoPlayer.isLoaded()) {
+			videoPlayer.close();
+		}
+		if (videoWriter.isOpened()) {
+			videoWriter.release();
+		}
+		videoPlayer.load("images/" + fileName);
+		videoPlayer.firstFrame();
+		videoPlayer.play();
+		videoPlayer.setPaused(true);
+		pixels = videoPlayer.getPixels();
+		image.setFromPixels(pixels);
+		videoWriter = cv::VideoWriter("data/images/effect.mp4", cv::VideoWriter::fourcc('m', 'p', '4', 'v'), 24.0, cv::Size(image.getWidth(), image.getHeight()), true);
+		currentMode = Mode::Video;
+	}
+	else {
+		//Display some error message
+		currentMode = Mode::None;
+		return;
+	}
 	currentFileName = fileName;
-	/*int wid = image.getWidth();
+	int wid = image.getWidth();
 	int hei = image.getHeight();
-	if (image.getWidth() > 1280 || image.getHeight() > 768) {
+	/*if (image.getWidth() > 1280 || image.getHeight() > 768) {
 		int heightRat = image.getHeight() / 768.0f;
 		int widthRat = image.getWidth() / 1280.0f;
 		if (widthRat > heightRat) {
 			wid = 1280;
-			hei = image.getHeight() / widthRat;
+			hei = image.getHeight() / heightRat;
 		}
 		else {
-			wid = image.getWidth() / heightRat;
+			wid = image.getWidth() / widthRat;
 			hei = 768;
 		}
 	}*/
 	ofSetWindowShape(image.getWidth() + guiWidth, image.getHeight());
 	resetGuiPosition();
-	pixels = image.getPixels();
-	if (useCompute) {
-		int bpp = pixels.getBytesPerPixel();
-		pixelAllocater.resize(image.getWidth() * image.getHeight());
-		pixels.mirror(true, false);
-		for (int i = 0; i < pixelAllocater.size(); i++) {
-			glm::vec3 & bufferPixel = pixelAllocater[i];
-			int y = int((float)i / (float)image.getWidth());
-			int x = i - y * image.getWidth();
-			ofColor color = pixels.getColor(x, y);
-			bufferPixel.r = color.r / 255.0f;
-			bufferPixel.g = color.g / 255.0f;
-			bufferPixel.b = color.b / 255.0f;
-		}
-		if (pixelsBuffer.isAllocated()) {
-			pixelsBuffer.invalidate();
-		}
-		pixelsBuffer.allocate(pixelAllocater, GL_DYNAMIC_DRAW);
-		pixelsBuffer.bindBase(GL_SHADER_STORAGE_BUFFER, 0);
-		//int bufferSize = image.getWidth() * image.getHeight() * sizeof(glm::uint);
-		//pixelsBuffer.allocate(image.getWidth() * image.getHeight() * 3, GL_READ_WRITE);
-		/*for (int i = 0; i < bufferSize; i++) {
-
-		}*/
-		//pixelsBuffer.bind(GL_PIXEL_UNPACK_BUFFER);
-	}
 	sortingIndex = 0;
 	started = false;
-	if (videoWriter.isOpened()) {
-		videoWriter.release();
-	}
-	videoWriter = cv::VideoWriter("data/images/effect.mp4", cv::VideoWriter::fourcc('m', 'p', '4', 'v'), 24.0, cv::Size(image.getWidth(), image.getHeight()), true);
 }
 
 void ofApp::pixelSort() {
@@ -535,6 +527,9 @@ void ofApp::start() {
 	if (started) {
 		timeStart = std::chrono::high_resolution_clock::now();
 	}
+	else {
+		videoWriter.release();
+	}
 }
 
 void ofApp::selectParameterRadioButton(const void* sender) {
@@ -564,7 +559,7 @@ void ofApp::setupGui() {
 	gui.add(horizontalToggle.setup("Horizontal"));
 	gui.add(reverseSortLabel.setup((string)"Reverse Direction"));
 	gui.add(reverseSort.setup("Reverse Sort"));
-	gui.add(threadCountSlider.setup("Thread Count", 10, 0, 100));
+	gui.add(threadCountSlider.setup("Thread Count", 17, 0, 30));
 
 	currentlySelectedThresholdVariable = BRIGHTNESS;
 	gui.add(selectedThresholdVariable.setup((string)"Sorting by: " + currentlySelectedThresholdVariable));
