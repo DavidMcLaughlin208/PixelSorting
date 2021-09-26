@@ -2,8 +2,12 @@
 
 #include "ofMain.h"
 #include "ofxGui.h"
+#include "ofxOpenCv.h"
 #include <vector>
 #include <string>
+#include <chrono>
+#include <opencv2/core/core.hpp>
+#include <opencv2/videoio.hpp>
 
 class ofApp : public ofBaseApp{
 
@@ -85,6 +89,17 @@ class ofApp : public ofBaseApp{
 
 		int threadCount = 10;
 		ofxIntSlider threadCountSlider;
+
+		cv::VideoWriter videoWriter;
+		bool createVideo = true;
+		ofVideoPlayer videoPlayer;
+
+		std::chrono::steady_clock::time_point timeStart = std::chrono::high_resolution_clock::now();
+		std::chrono::steady_clock::time_point timeEnd = std::chrono::high_resolution_clock::now();
+
+		std::set<std::string> videoExtensions;
+		std::set<std::string> imageExtensions;
+
 
 		// Threshold parameter radio buttons
 		ofxButton brightnessRadio;

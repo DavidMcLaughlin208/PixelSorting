@@ -6,7 +6,6 @@ std::string ofApp::HUE = "Hue";
 std::string ofApp::SATURATION = "Saturation";
 
 void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth, int imageHeight, ofPixels& pixelsRef, std::string thresholdName, float threshold) {
-	//ofPixels pixelsRef = *pixels;
 	int widthOrHeight;
 	int start = startIndex;
 	int end;
@@ -30,10 +29,9 @@ void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth,
 	int endOfInterval = -1;
 
 	ofColor color;
-	//char colorArray[4];
 	char pixelSwapBuffer[4];
 	for (int i = start * widthOrHeight; i < end; i++) {
-		int actualI;// = getActualIndex(i, start, bytesPerPixel, image.getWidth(), this->horizontal);
+		int actualI;
 		if (horizontal) {
 			actualI = i * bytesPerPixel;
 		}
@@ -42,7 +40,6 @@ void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth,
 		}
 		color.set(pixelsRef[actualI + 0], pixelsRef[actualI + 1], pixelsRef[actualI + 2]);
 		float value;
-		//Inlining this beccause separating as a function is really slow
 		if (thresholdName == ofApp::BRIGHTNESS) {
 			value = color.getBrightness() / 255.0f;
 		}
@@ -90,8 +87,7 @@ void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth,
 			if (reverse) {
 				modS = endOfInterval - s + startOfInterval;
 			}
-			//Inlining this function because c++
-			int actualS;// = getActualIndex(modS, start, bytesPerPixel, image.getWidth(), this->horizontal);
+			int actualS;
 			if (horizontal) {
 				actualS = modS * bytesPerPixel;
 			}
@@ -105,17 +101,14 @@ void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth,
 				if (reverse) {
 					modJ = endOfInterval - j + startOfInterval;
 				}
-				//Inlining this function because c++
-				int actualJ;// = getActualIndex(modJ, start, bytesPerPixel, image.getWidth(), this->horizontal);
+				int actualJ;
 				if (horizontal) {
 					actualJ = modJ * bytesPerPixel;
 				}
 				else {
 					actualJ = modJ * imageWidth * bytesPerPixel + (start * bytesPerPixel);
 				}
-				/*for (int c = 0; c < bytesPerPixel; c++) {
-					colorArray[c] = pixelsRef[actualJ + c];
-				}*/
+
 				color.set(pixelsRef[actualJ + 0], pixelsRef[actualJ + 1], pixelsRef[actualJ + 2]);
 				float val;
 				if (thresholdName == ofApp::BRIGHTNESS) {
@@ -144,7 +137,6 @@ void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth,
 			for (int c = 0; c < bytesPerPixel; c++) {
 				pixelsRef[indexOfHighest + c] = pixelSwapBuffer[c];
 			}
-			//swapPixels(pixels, actualS, indexOfHighest, bytesPerPixel);
 		}
 		startOfInterval = -1;
 		endOfInterval = -1;
@@ -155,6 +147,12 @@ void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth,
 void ofApp::setup() {
 	setupGui();
 	setupShaders();
+
+	videoExtensions.insert("mp4");
+	videoExtensions.insert("mov");
+
+	imageExtensions.insert("png");
+	imageExtensions.insert("jpg");
 
 }
 
@@ -195,13 +193,17 @@ void ofApp::update() {
 			if (useThreads) {
 				vector<std::thread> threadList;
 				for (int i = 0; i < threadCount; i++) {
-					//std::thread newThread(pixelSortRow, sortingIndex, this->horizontal, this->reverse, image.getWidth(), image.getHeight(), pixels, currentlySelectedThresholdVariable, threshold);
 					threadList.push_back(std::thread(pixelSortRow, sortingIndex, this->horizontal, this->reverse, image.getWidth(), image.getHeight(), std::ref(pixels), currentlySelectedThresholdVariable, threshold));
 					sortingIndex += 1;
 					int columnsOrRows = this->horizontal ? image.getHeight() : image.getWidth();
 					if (sortingIndex >= columnsOrRows - 1) {
 						sortingIndex = 0;
 						started = false;
+						timeEnd = std::chrono::high_resolution_clock::now();
+
+						long timeTaken = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeStart).count();
+						std::cout << "Thread Count of " << threadCount << " took " << timeTaken << " milliseconds." << std::endl;
+						break;
 					}
 				}
 				for (int i = 0; i < threadList.size(); i++) {
@@ -211,7 +213,22 @@ void ofApp::update() {
 			} else {
 				pixelSort();
 			}
-			
+			int size = image.getWidth() * image.getHeight();
+			int bpp = pixels.getBytesPerPixel();
+			cv::Mat mat;
+			mat = cv::Mat_<cv::Vec3b>(image.getHeight(), image.getWidth());
+			for (int i = 0; i < size; i++) {
+				int actualI = i * bpp;
+				int y = int((float)i / (float)image.getWidth());
+				int x = i - y * image.getWidth();
+				mat.at<cv::Vec3b>(y, x)[0] = pixels[actualI + 2];
+				mat.at<cv::Vec3b>(y, x)[1] = pixels[actualI + 1];
+				mat.at<cv::Vec3b>(y, x)[2] = pixels[actualI + 0];
+			}
+			videoWriter.write(mat);
+			if (!started) {
+				videoWriter.release();
+			}
 		}
 	}
 }
@@ -253,12 +270,6 @@ void ofApp::draw() {
 		}
 	}
 	else {
-		/*shader.begin();
-		shader.setUniform1i("bytesPerPixel", pixels.getBytesPerPixel());
-		shader.setUniform1i("imageWidth", image.getWidth());
-		shader.setUniform1i("imageHeight", image.getHeight());
-		ofDrawRectangle(0, 0, image.getWidth(), image.getHeight());
-		shader.end();*/
 		if (image.isAllocated()) {
 			image.draw(0, 0);
 		}
@@ -267,16 +278,14 @@ void ofApp::draw() {
 }
 
 void ofApp::loadImage(std::string fileName) {
-	/*texture.unbind();
-	sortedTexture.clear();
-	sortedTexture.unbind();*/
-
+	/*ofFilePath filePath;
+	std::string fileName = filePath.getBaseName(fileName);
+	std::string extension = "." + filePath.getFileExt(currentFileName);
+	if (imageExtensions.find(extension) != imageExtensions.end()) {
+		image.load("images/" + fileName);
+	}*/
 	image.load("images/" + fileName);
 	currentFileName = fileName;
-	/*texture = image.getTexture();
-	texture.bindAsImage(0, GL_READ_ONLY);
-	sortedTexture = texture;
-	sortedTexture.bindAsImage(1, GL_WRITE_ONLY);*/
 	/*int wid = image.getWidth();
 	int hei = image.getHeight();
 	if (image.getWidth() > 1280 || image.getHeight() > 768) {
@@ -321,6 +330,10 @@ void ofApp::loadImage(std::string fileName) {
 	}
 	sortingIndex = 0;
 	started = false;
+	if (videoWriter.isOpened()) {
+		videoWriter.release();
+	}
+	videoWriter = cv::VideoWriter("data/images/effect.mp4", cv::VideoWriter::fourcc('m', 'p', '4', 'v'), 24.0, cv::Size(image.getWidth(), image.getHeight()), true);
 }
 
 void ofApp::pixelSort() {
@@ -519,6 +532,9 @@ float ofApp::getThresholdVariableFromColor(ofColor color, std::string selectedVa
 
 void ofApp::start() {
 	started = !started;
+	if (started) {
+		timeStart = std::chrono::high_resolution_clock::now();
+	}
 }
 
 void ofApp::selectParameterRadioButton(const void* sender) {
