@@ -75,6 +75,7 @@ class ofApp : public ofBaseApp{
 		ofxPanel gui;
 		int guiWidth = 200;
 		ofxFloatSlider thresholdSlider;
+		ofxFloatSlider upperThresholdSlider;
 		vector<ofxButton*> buttons;
 		ofxButton sortButton;
 		ofxButton saveButton;
@@ -88,7 +89,8 @@ class ofApp : public ofBaseApp{
 		bool started = false;
 		std::string currentFileName;
 
-		float threshold = 0.1f;
+		float threshold = 0.25f;
+		float upperThreshold = 0.8f;
 		bool horizontal = false;
 		bool reverse = false;
 		bool useCompute = false;
