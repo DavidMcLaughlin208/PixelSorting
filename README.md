@@ -31,13 +31,17 @@ This application is still in development. I plan to publish some iterations in t
 ### Todo List:
 
 * Add masking functionality
-** Add GUI panel for mask infor
-** Use mask to determine eligible pixels for sorting
-** Use mask as intervals
-** Add ability to draw custom mask in application
+ * Add GUI panel for mask info
+ * Use mask to determine eligible pixels for sorting
+ * Use mask as intervals
+ * Add ability to draw custom mask in application
 * Add arbitrary rotation angles for sorting (not just horizontal/vertical)
 * Improve UI clarity and usability
-** Add diagnostics and metrics to be shown in app (time taken, current frame for videos)
+ * Add diagnostics and metrics to be shown in app (time taken, current frame for videos)
+ * Add ability to apply curves or easing functions to parameter values to change them over the course of a video sorting
+ * Clean up GUI panels and logically separate buttons, parameters, etc.
+ * Allow for reload of image/video load buttons when contents of folder change
+* Add undo functionality
 
 ### Examples
 

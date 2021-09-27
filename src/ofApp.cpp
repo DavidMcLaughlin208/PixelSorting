@@ -5,11 +5,19 @@ std::string ofApp::LIGHTNESS = "Lightness";
 std::string ofApp::HUE = "Hue";
 std::string ofApp::SATURATION = "Saturation";
 
-struct SortingFunction {
+struct BrightnessComparator {
 	bool operator() (ofColor i, ofColor j) { return (i.getBrightness() < j.getBrightness()); }
-} sortingFunction;
+} brightnessComparator;
 
-void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth, int imageHeight, ofPixels& pixelsRef, std::string thresholdName, float threshold, float upperThreshold) {
+struct HueComparator {
+	bool operator() (ofColor i, ofColor j) { return (i.getHue() < j.getHue()); }
+} hueComparator;
+
+struct SaturationComparator {
+	bool operator() (ofColor i, ofColor j) { return (i.getSaturation() < j.getSaturation()); }
+} saturationComparator;
+
+void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth, int imageHeight, ofPixels& pixelsRef, ofApp::SortParameter sortParameter, float threshold, float upperThreshold) {
 	int widthOrHeight;
 	int start = startIndex;
 	int end;
@@ -35,42 +43,38 @@ void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth,
 	ofColor color;
 	char pixelSwapBuffer[4];
 	for (int i = start * widthOrHeight; i < end; i++) {
-		int actualI;
-		if (horizontal) {
-			actualI = i * bytesPerPixel;
-		}
-		else {
-			actualI = i * imageWidth * bytesPerPixel + (start * bytesPerPixel);
-		}
+		int actualI = horizontal ? actualI = i * bytesPerPixel : i * imageWidth * bytesPerPixel + (start * bytesPerPixel);
 		color.set(pixelsRef[actualI + 0], pixelsRef[actualI + 1], pixelsRef[actualI + 2]);
 		float value = 0.0;
-		if (thresholdName == ofApp::BRIGHTNESS) {
-			value = color.getBrightness() / 255.0f;
+
+		switch (sortParameter) {
+			case ofApp::SortParameter::Brightness:
+				value = color.getBrightness() / 255.0f;
+				break;
+
+			case ofApp::SortParameter::Hue:
+				value = color.getHue() / 255.0f;
+				break;
+
+			case ofApp::SortParameter::Saturation:
+				value = color.getSaturation() / 255.0f;
+				break;
+
 		}
-		else if (thresholdName == ofApp::LIGHTNESS) {
-			value = color.getLightness() / 255.0f;
-		}
-		else if (thresholdName == ofApp::HUE) {
-			value = color.getHue() / 255.0f;
-		}
-		else if (thresholdName == ofApp::SATURATION) {
-			value = color.getSaturation() / 255.0f;
-		}
+
 		if (value >= threshold && value <= upperThreshold) {
 			if (startOfInterval == -1) {
 				startOfInterval = i;
 				continue;
 			}
 			else {
-				// If we are above threshold and we already have a valid startOfInterval
-				// then we extend endOfInterval to the current index, we have special logic here 
-				// to ensure that if we are at the end of a row we start the currently started interval
-				endOfInterval = i;
 				if (!(i == end - 1)) {
+					// This is not the end of a row/column and we are within threshold range so we will
+					// continue in the loop to find the interval
 					continue;
 				}
 				else {
-					// this is the end of a row or column so we will sort this interval
+					// This is the end of a row or column so we will sort this interval
 				}
 			}
 		}
@@ -85,102 +89,39 @@ void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth,
 				// to sort that interval in the following nested loop
 			}
 		}
-		if (endOfInterval == -1) {
-			continue;
-		}
+		endOfInterval = i - 1;
 
 		vector<ofColor> intervalColors;
 		intervalColors.resize(endOfInterval - startOfInterval + 1);
 		for (int s = startOfInterval; s <= endOfInterval; s++) {
-			int modS = s;
-			if (reverse) {
-				modS = endOfInterval - s + startOfInterval;
-			}
-			int actualS;
-			if (horizontal) {
-				actualS = modS * bytesPerPixel;
-			}
-			else {
-				actualS = modS * imageWidth * bytesPerPixel + (start * bytesPerPixel);
-			}
+			int modS = reverse ? endOfInterval - s + startOfInterval : s;
+			int actualS = horizontal ? modS * bytesPerPixel : modS * imageWidth * bytesPerPixel + (start * bytesPerPixel);
 			intervalColors[s - startOfInterval].r = pixelsRef[actualS + 0];
 			intervalColors[s - startOfInterval].g = pixelsRef[actualS + 1];
 			intervalColors[s - startOfInterval].b = pixelsRef[actualS + 2];
 		}
-		std::sort(intervalColors.begin(), intervalColors.end(), sortingFunction);
+		switch (sortParameter) {
+		case ofApp::SortParameter::Brightness:
+			std::sort(intervalColors.begin(), intervalColors.end(), brightnessComparator);
+			break;
+
+		case ofApp::SortParameter::Hue:
+			std::sort(intervalColors.begin(), intervalColors.end(), hueComparator);
+			break;
+
+		case ofApp::SortParameter::Saturation:
+			std::sort(intervalColors.begin(), intervalColors.end(), saturationComparator);
+			break;
+
+		}
+
 		for (int s = startOfInterval; s <= endOfInterval; s++) {
-			int modS = s;
-			if (reverse) {
-				modS = endOfInterval - s + startOfInterval;
-			}
-			int actualS;
-			if (horizontal) {
-				actualS = modS * bytesPerPixel;
-			}
-			else {
-				actualS = modS * imageWidth * bytesPerPixel + (start * bytesPerPixel);
-			}
+			int modS = reverse ? endOfInterval - s + startOfInterval : s;
+			int actualS = horizontal ? modS * bytesPerPixel : modS * imageWidth * bytesPerPixel + (start * bytesPerPixel);
 			pixelsRef[actualS + 0] = intervalColors[s - startOfInterval].r;
 			pixelsRef[actualS + 1] = intervalColors[s - startOfInterval].g;
 			pixelsRef[actualS + 2] = intervalColors[s - startOfInterval].b;
 		}
-
-		/*for (int s = startOfInterval; s <= endOfInterval; s++) {
-			int modS = s;
-			if (reverse) {
-				modS = endOfInterval - s + startOfInterval;
-			}
-			int actualS;
-			if (horizontal) {
-				actualS = modS * bytesPerPixel;
-			}
-			else {
-				actualS = modS * imageWidth * bytesPerPixel + (start * bytesPerPixel);
-			}
-			indexOfHighest = actualS;
-			highestVal = -1;
-			for (int j = s; j <= endOfInterval; j++) {
-				int modJ = j;
-				if (reverse) {
-					modJ = endOfInterval - j + startOfInterval;
-				}
-				int actualJ;
-				if (horizontal) {
-					actualJ = modJ * bytesPerPixel;
-				}
-				else {
-					actualJ = modJ * imageWidth * bytesPerPixel + (start * bytesPerPixel);
-				}
-
-				color.set(pixelsRef[actualJ + 0], pixelsRef[actualJ + 1], pixelsRef[actualJ + 2]);
-				float val;
-				if (thresholdName == ofApp::BRIGHTNESS) {
-					val = color.getBrightness() / 255.0f;
-				}
-				else if (thresholdName == ofApp::LIGHTNESS) {
-					val = color.getLightness() / 255.0f;
-				}
-				else if (thresholdName == ofApp::HUE) {
-					val = color.getHue() / 255.0f;
-				}
-				else if (thresholdName == ofApp::SATURATION) {
-					val = color.getSaturation() / 255.0f;
-				}
-				if (val > highestVal) {
-					highestVal = val;
-					indexOfHighest = actualJ;
-				}
-			}
-			for (int c = 0; c < bytesPerPixel; c++) {
-				pixelSwapBuffer[c] = pixelsRef[actualS + c];
-			}
-			for (int c = 0; c < bytesPerPixel; c++) {
-				pixelsRef[actualS + c] = pixelsRef[indexOfHighest + c];
-			}
-			for (int c = 0; c < bytesPerPixel; c++) {
-				pixelsRef[indexOfHighest + c] = pixelSwapBuffer[c];
-			}
-		}*/
 		startOfInterval = -1;
 		endOfInterval = -1;
 	}
@@ -196,6 +137,10 @@ void ofApp::setup() {
 
 	imageExtensions.insert(".png");
 	imageExtensions.insert(".jpg");
+
+	sortParameterTable.insert(std::pair<std::string, SortParameter>(BRIGHTNESS, SortParameter::Brightness));
+	sortParameterTable.insert(std::pair<std::string, SortParameter>(HUE, SortParameter::Hue));
+	sortParameterTable.insert(std::pair<std::string, SortParameter>(SATURATION, SortParameter::Saturation));
 
 }
 
@@ -386,8 +331,9 @@ void ofApp::start() {
 }
 
 void ofApp::selectParameterRadioButton(const void* sender) {
-	currentlySelectedThresholdVariable = ((ofParameter<bool>*)sender)->getName();
-	selectedThresholdVariable = (string)"Sorting by: " + currentlySelectedThresholdVariable;
+	std::string name = ((ofParameter<bool>*)sender)->getName();
+	currentlySelectedThresholdVariable = sortParameterTable.find(name)->second;
+	selectedThresholdVariable = (string)"Sorting by: " + name;
 }
 
 bool ofApp::clickedOnLabel(const void* sender) {
@@ -415,14 +361,11 @@ void ofApp::setupGui() {
 	gui.add(reverseSort.setup("Reverse Sort"));
 	gui.add(threadCountSlider.setup("Thread Count", 17, 0, 30));
 
-	currentlySelectedThresholdVariable = BRIGHTNESS;
-	gui.add(selectedThresholdVariable.setup((string)"Sorting by: " + currentlySelectedThresholdVariable));
+	gui.add(selectedThresholdVariable.setup((string)"Sorting by: " + BRIGHTNESS));
 	gui.add(brightnessRadio.setup(BRIGHTNESS));
-	gui.add(lightnessRadio.setup(LIGHTNESS));
 	gui.add(hueRadio.setup(HUE));
 	gui.add(saturationRadio.setup(SATURATION));
 	brightnessRadio.addListener(this, &ofApp::selectParameterRadioButton);
-	lightnessRadio.addListener(this, &ofApp::selectParameterRadioButton);
 	hueRadio.addListener(this, &ofApp::selectParameterRadioButton);
 	saturationRadio.addListener(this, &ofApp::selectParameterRadioButton);
 

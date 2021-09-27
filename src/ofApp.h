@@ -18,6 +18,15 @@ class ofApp : public ofBaseApp{
 			Video
 		};
 
+
+		enum class SortParameter {
+			Brightness,
+			Hue,
+			Saturation
+		};
+
+
+
 		void setup();
 		void update();
 		void convertVecToCharPixels(vector<unsigned char> &charVec, glm::vec3* vecPointer, int bytesPerPixel, int pixelsBufferSize);
@@ -114,11 +123,13 @@ class ofApp : public ofBaseApp{
 		// Threshold parameter radio buttons
 		ofxButton brightnessRadio;
 		ofxButton hueRadio;
-		ofxButton lightnessRadio;
 		ofxButton saturationRadio;
 		vector<ofxButton> thresholdValueRadioButtons;
-		std::string currentlySelectedThresholdVariable;
+		SortParameter currentlySelectedThresholdVariable = SortParameter::Brightness;
 		ofxLabel selectedThresholdVariable;
 
 		Mode currentMode = Mode::None;
+		std::map<std::string, SortParameter> sortParameterTable;
+
+
 };
