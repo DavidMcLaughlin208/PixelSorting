@@ -5,6 +5,10 @@ std::string ofApp::LIGHTNESS = "Lightness";
 std::string ofApp::HUE = "Hue";
 std::string ofApp::SATURATION = "Saturation";
 
+struct SortingFunction {
+	bool operator() (ofColor i, ofColor j) { return (i.getBrightness() < j.getBrightness()); }
+} sortingFunction;
+
 void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth, int imageHeight, ofPixels& pixelsRef, std::string thresholdName, float threshold, float upperThreshold) {
 	int widthOrHeight;
 	int start = startIndex;
@@ -81,8 +85,47 @@ void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth,
 				// to sort that interval in the following nested loop
 			}
 		}
+		if (endOfInterval == -1) {
+			continue;
+		}
 
+		vector<ofColor> intervalColors;
+		intervalColors.resize(endOfInterval - startOfInterval + 1);
 		for (int s = startOfInterval; s <= endOfInterval; s++) {
+			int modS = s;
+			if (reverse) {
+				modS = endOfInterval - s + startOfInterval;
+			}
+			int actualS;
+			if (horizontal) {
+				actualS = modS * bytesPerPixel;
+			}
+			else {
+				actualS = modS * imageWidth * bytesPerPixel + (start * bytesPerPixel);
+			}
+			intervalColors[s - startOfInterval].r = pixelsRef[actualS + 0];
+			intervalColors[s - startOfInterval].g = pixelsRef[actualS + 1];
+			intervalColors[s - startOfInterval].b = pixelsRef[actualS + 2];
+		}
+		std::sort(intervalColors.begin(), intervalColors.end(), sortingFunction);
+		for (int s = startOfInterval; s <= endOfInterval; s++) {
+			int modS = s;
+			if (reverse) {
+				modS = endOfInterval - s + startOfInterval;
+			}
+			int actualS;
+			if (horizontal) {
+				actualS = modS * bytesPerPixel;
+			}
+			else {
+				actualS = modS * imageWidth * bytesPerPixel + (start * bytesPerPixel);
+			}
+			pixelsRef[actualS + 0] = intervalColors[s - startOfInterval].r;
+			pixelsRef[actualS + 1] = intervalColors[s - startOfInterval].g;
+			pixelsRef[actualS + 2] = intervalColors[s - startOfInterval].b;
+		}
+
+		/*for (int s = startOfInterval; s <= endOfInterval; s++) {
 			int modS = s;
 			if (reverse) {
 				modS = endOfInterval - s + startOfInterval;
@@ -137,7 +180,7 @@ void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth,
 			for (int c = 0; c < bytesPerPixel; c++) {
 				pixelsRef[indexOfHighest + c] = pixelSwapBuffer[c];
 			}
-		}
+		}*/
 		startOfInterval = -1;
 		endOfInterval = -1;
 	}
@@ -192,7 +235,7 @@ void ofApp::update() {
 			sortComplete = false;
 			if (currentMode == Mode::Image) {
 				started = false;
-				image.setFromPixels(pixels);
+				//image.setFromPixels(pixels);
 			}
 			else if (currentMode == Mode::Video) {
 				saveFrameToVideo();
