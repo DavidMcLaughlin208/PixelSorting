@@ -194,7 +194,7 @@ void ofApp::update() {
 			}
 			else if (currentMode == Mode::Video) {
 				saveFrameToVideo();
-				if (videoPlayer.getCurrentFrame() == videoPlayer.getTotalNumFrames()) {
+				if (videoPlayer.getCurrentFrame() >= videoPlayer.getTotalNumFrames() - 1) {
 					videoPlayer.close();
 					videoWriter.release();
 					started = false;
@@ -202,6 +202,7 @@ void ofApp::update() {
 				}
 				else {
 					videoPlayer.nextFrame();
+					videoPlayer.update();
 					pixels = videoPlayer.getPixels();
 					image.clear();
 					image.setFromPixels(pixels);
@@ -299,7 +300,9 @@ void ofApp::loadImage(std::string fileName) {
 		videoPlayer.setPaused(true);
 		pixels = videoPlayer.getPixels();
 		image.setFromPixels(pixels);
-		videoWriter = cv::VideoWriter("data/images/effect.mp4", cv::VideoWriter::fourcc('m', 'p', '4', 'v'), 24.0, cv::Size(image.getWidth(), image.getHeight()), true);
+
+		float fps = videoPlayer.getTotalNumFrames() / videoPlayer.getDuration();
+		videoWriter = cv::VideoWriter("data/images/effect.mp4", cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(image.getWidth(), image.getHeight()), true);
 		currentMode = Mode::Video;
 	}
 	else {
