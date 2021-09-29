@@ -26,17 +26,13 @@ class ofApp : public ofBaseApp{
 		};
 
 
-
+		void rotateImage(int angle);
 		void setup();
 		void update();
 		void convertVecToCharPixels(vector<unsigned char> &charVec, glm::vec3* vecPointer, int bytesPerPixel, int pixelsBufferSize);
 		void draw();
-		void pixelSort();
 		
 		void saveFrameToVideo();
-		void swapPixels(ofPixels& pixels, int index1, int index2, int bytesPerPixel);
-		int getActualIndex(int index, int column, int bytesPerPixel, int imageWidth, bool isHorizontal);
-		float getThresholdVariableFromColor(ofColor color, std::string selectedVariable);
 		void start();
 		void selectParameterRadioButton(const void* sender);
 		bool clickedOnLabel(const void* sender);
@@ -46,8 +42,6 @@ class ofApp : public ofBaseApp{
 		void resetGuiPosition();
 
 		void setupGui();
-
-		void setupShaders();
 
 		void saveCurrentImage();
 
@@ -69,22 +63,17 @@ class ofApp : public ofBaseApp{
 		static std::string SATURATION;
 		
 		ofDirectory directory;
-		ofImage image;
-		ofTexture texture;
-		ofTexture sortedTexture;
-		ofImage sortedImage;
-		ofPixels pixels;
-		ofFbo fbo;
+		ofxCvColorImage image;
+		ofImage tempImage;
 
-		ofShader pixelSortCompute;
-		ofBufferObject pixelsBuffer;
-		vector<glm::vec3> pixelAllocater;
-		ofShader shader;
+		//ofxCvColorImage cvImage;
+		ofPixels pixels;
 
 		ofxPanel gui;
 		int guiWidth = 200;
 		ofxFloatSlider thresholdSlider;
 		ofxFloatSlider upperThresholdSlider;
+		ofxIntSlider angleSlider;
 		vector<ofxButton*> buttons;
 		ofxButton sortButton;
 		ofxButton saveButton;
@@ -100,10 +89,9 @@ class ofApp : public ofBaseApp{
 
 		float threshold = 0.25f;
 		float upperThreshold = 0.8f;
+		int angle = 0;
 		bool horizontal = false;
 		bool reverse = false;
-		bool useCompute = false;
-		bool useThreads = true;
 		bool sortComplete = false;
 
 		int threadCount = 10;

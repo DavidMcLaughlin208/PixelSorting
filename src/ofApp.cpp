@@ -130,7 +130,6 @@ void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth,
 //--------------------------------------------------------------
 void ofApp::setup() {
 	setupGui();
-	setupShaders();
 
 	videoExtensions.insert(".mp4");
 	videoExtensions.insert(".mov");
@@ -149,6 +148,7 @@ void ofApp::update() {
 	ofSetWindowTitle(ofToString(ofGetFrameRate()));
 	threshold = thresholdSlider;
 	upperThreshold = upperThresholdSlider;
+	angle = angleSlider;
 	horizontal = horizontalToggle;
 	reverse = reverseSort;
 	threadCount = threadCountSlider;
@@ -180,6 +180,11 @@ void ofApp::update() {
 			sortComplete = false;
 			if (currentMode == Mode::Image) {
 				started = false;
+				// Use this to rotate with bound: https://www.pyimagesearch.com/2017/01/02/rotate-images-correctly-with-opencv-and-python/
+				//image.rotate(-angle, image.getWidth() / 2, image.getHeight() / 2);
+				rotateImage(-angle);
+				pixels = image.getPixels();
+				image.setFromPixels(pixels);
 				//image.setFromPixels(pixels);
 			}
 			else if (currentMode == Mode::Video) {
@@ -203,6 +208,49 @@ void ofApp::update() {
 
 		
 	}
+}
+
+// Code adapted to work with OF pulled from here: https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c/33564950#33564950
+void ofApp::rotateImage(int angle) {
+	if (angle == 0) {
+		return;
+	}
+	int size = image.getWidth() * image.getHeight();
+	int bpp = pixels.getBytesPerPixel();
+	cv::Mat src;
+	src = cv::Mat_<cv::Vec3b>(image.getHeight(), image.getWidth());
+	for (int i = 0; i < size; i++) {
+		int actualI = i * bpp;
+		int y = int((float)i / (float)image.getWidth());
+		int x = i - y * image.getWidth();
+		src.at<cv::Vec3b>(y, x)[0] = pixels[actualI + 2];
+		src.at<cv::Vec3b>(y, x)[1] = pixels[actualI + 1];
+		src.at<cv::Vec3b>(y, x)[2] = pixels[actualI + 0];
+	}
+	// get rotation matrix for rotating the image around its center in pixel coordinates
+	cv::Point2f center((src.cols - 1) / 2.0, (src.rows - 1) / 2.0);
+	cv::Mat rot = cv::getRotationMatrix2D(center, angle, 1.0);
+	// determine bounding rectangle, center not relevant
+	cv::Rect2f bbox = cv::RotatedRect(cv::Point2f(), src.size(), angle).boundingRect2f();
+	// adjust transformation matrix
+	rot.at<double>(0, 2) += bbox.width / 2.0 - src.cols / 2.0;
+	rot.at<double>(1, 2) += bbox.height / 2.0 - src.rows / 2.0;
+
+	cv::Mat dst;
+	cv::warpAffine(src, dst, rot, bbox.size());
+	image.resize(dst.cols, dst.rows);
+	size = image.getWidth() * image.getHeight();
+	pixels = image.getPixels();
+	for (int i = 0; i < size; i++) {
+		int actualI = i * bpp;
+		int y = int((float)i / (float)image.getWidth());
+		int x = i - y * image.getWidth();
+		pixels[actualI + 2] = dst.at<cv::Vec3b>(y, x)[0];
+		pixels[actualI + 1] = dst.at<cv::Vec3b>(y, x)[1];
+		pixels[actualI + 0] = dst.at<cv::Vec3b>(y, x)[2];
+	}
+	image.setFromPixels(pixels);
+	pixels = image.getPixels();
 }
 
 void ofApp::saveFrameToVideo() {
@@ -237,30 +285,24 @@ void ofApp::convertVecToCharPixels(vector<unsigned char> &charVec, glm::vec3* ve
 
 //--------------------------------------------------------------
 void ofApp::draw() {
-	if (!useCompute) {
-		if (image.isAllocated()) {
+	if (tempImage.isAllocated()) {
 
-			int wid = image.getWidth();
-			int hei = image.getHeight();
-			/*if (image.getWidth() > 1280 || image.getHeight() > 768) {
-				int heightRat = image.getHeight() / 768.0f;
-				int widthRat = image.getWidth() / 1280.0f;
-				if (widthRat > heightRat) {
-					wid = 1280;
-					hei = image.getHeight() / heightRat;
-				}
-				else {
-					wid = image.getWidth() / widthRat;
-					hei = 768;
-				}
-			}*/
-			image.draw(0, 0, wid, hei);
-		}
-	}
-	else {
-		if (image.isAllocated()) {
-			image.draw(0, 0);
-		}
+		int wid = image.getWidth();
+		int hei = image.getHeight();
+		/*if (image.getWidth() > 1280 || image.getHeight() > 768) {
+			int heightRat = image.getHeight() / 768.0f;
+			int widthRat = image.getWidth() / 1280.0f;
+			if (widthRat > heightRat) {
+				wid = 1280;
+				hei = image.getHeight() / heightRat;
+			}
+			else {
+				wid = image.getWidth() / widthRat;
+				hei = 768;
+			}
+		}*/
+		image.draw(0, 0, wid, hei);
+		//cvImage.draw(0, 0);
 	}
 	gui.draw();
 }
@@ -272,9 +314,14 @@ void ofApp::loadImage(std::string fileName) {
 	std::string extension = "." + filePath.getFileExt(fileName);
 
 	if (imageExtensions.find(extension) != imageExtensions.end()) {
-		image.load("images/" + fileName);
-		pixels = image.getPixels();
+		tempImage.load("images/" + fileName);
+		pixels = tempImage.getPixels();
 		currentMode = Mode::Image;
+		image.setFromPixels(pixels);
+		rotateImage(angle);
+		//image.rotate(angle, image.getWidth() / 2, image.getHeight() / 2);
+		pixels = image.getPixels();
+
 	}
 	else if (videoExtensions.find(extension) != videoExtensions.end()) {
 		if (videoPlayer.isLoaded()) {
@@ -355,6 +402,7 @@ void ofApp::setupGui() {
 	saveButton.addListener(this, &ofApp::saveCurrentImage);
 	gui.add(thresholdSlider.setup("Threshold", 0.25, 0.0, 1.0));
 	gui.add(upperThresholdSlider.setup("Upper Threshold", 0.8, 0.0, 1.0));
+	gui.add(angleSlider.setup("Angle", 0, 0, 359));
 	gui.add(horiztonalToggleLabel.setup((std::string) "Horzontal Sort"));
 	gui.add(horizontalToggle.setup("Horizontal"));
 	gui.add(reverseSortLabel.setup((string)"Reverse Direction"));
@@ -380,21 +428,15 @@ void ofApp::setupGui() {
 	}
 }
 
-void ofApp::setupShaders() {
-	pixelSortCompute.setupShaderFromFile(GL_COMPUTE_SHADER, "shaders/pixelSort.compute");
-	pixelSortCompute.linkProgram();
-	shader.load("shaders/shader");
-}
-
 void ofApp::saveCurrentImage() {
-	if (image.isAllocated()) {
-		ofFilePath filePath;
-		std::string fileName = filePath.getBaseName(currentFileName);
-		std::string extension = "." + filePath.getFileExt(currentFileName);
-		std::string fullName = fileName + "1" + extension;
-		image.save("images/" + fullName);
-		currentFileName = fullName;
-	}
+	//if (image.isAllocated()) {
+	//	ofFilePath filePath;
+	//	std::string fileName = filePath.getBaseName(currentFileName);
+	//	std::string extension = "." + filePath.getFileExt(currentFileName);
+	//	std::string fullName = fileName + "1" + extension;
+	//	image.save("images/" + fullName);
+	//	currentFileName = fullName;
+	//}
 	
 }
 
