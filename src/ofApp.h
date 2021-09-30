@@ -63,8 +63,9 @@ class ofApp : public ofBaseApp{
 		static std::string SATURATION;
 		
 		ofDirectory directory;
-		ofxCvColorImage image;
-		ofImage tempImage;
+		ofImage image;
+		int unrotatedWidth;
+		int unrotatedHeight;
 
 		//ofxCvColorImage cvImage;
 		ofPixels pixels;

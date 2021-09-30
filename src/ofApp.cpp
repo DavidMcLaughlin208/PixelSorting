@@ -44,7 +44,7 @@ void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth,
 	char pixelSwapBuffer[4];
 	for (int i = start * widthOrHeight; i < end; i++) {
 		int actualI = horizontal ? actualI = i * bytesPerPixel : i * imageWidth * bytesPerPixel + (start * bytesPerPixel);
-		color.set(pixelsRef[actualI + 0], pixelsRef[actualI + 1], pixelsRef[actualI + 2]);
+		color.set(pixelsRef[actualI + 0], pixelsRef[actualI + 1], pixelsRef[actualI + 2], pixelsRef[actualI + 3]);
 		float value = 0.0;
 
 		switch (sortParameter) {
@@ -62,7 +62,7 @@ void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth,
 
 		}
 
-		if (value >= threshold && value <= upperThreshold) {
+		if (color.a != 0 && (value >= threshold && value <= upperThreshold)) {
 			if (startOfInterval == -1) {
 				startOfInterval = i;
 				continue;
@@ -180,9 +180,7 @@ void ofApp::update() {
 			sortComplete = false;
 			if (currentMode == Mode::Image) {
 				started = false;
-				// Use this to rotate with bound: https://www.pyimagesearch.com/2017/01/02/rotate-images-correctly-with-opencv-and-python/
-				//image.rotate(-angle, image.getWidth() / 2, image.getHeight() / 2);
-				rotateImage(-angle);
+				//rotateImage(-angle);
 				pixels = image.getPixels();
 				image.setFromPixels(pixels);
 				//image.setFromPixels(pixels);
@@ -218,14 +216,15 @@ void ofApp::rotateImage(int angle) {
 	int size = image.getWidth() * image.getHeight();
 	int bpp = pixels.getBytesPerPixel();
 	cv::Mat src;
-	src = cv::Mat_<cv::Vec3b>(image.getHeight(), image.getWidth());
+	src = cv::Mat_<cv::Vec4b>(image.getHeight(), image.getWidth());
 	for (int i = 0; i < size; i++) {
 		int actualI = i * bpp;
 		int y = int((float)i / (float)image.getWidth());
 		int x = i - y * image.getWidth();
-		src.at<cv::Vec3b>(y, x)[0] = pixels[actualI + 2];
-		src.at<cv::Vec3b>(y, x)[1] = pixels[actualI + 1];
-		src.at<cv::Vec3b>(y, x)[2] = pixels[actualI + 0];
+		src.at<cv::Vec4b>(y, x)[0] = pixels[actualI + 2];
+		src.at<cv::Vec4b>(y, x)[1] = pixels[actualI + 1];
+		src.at<cv::Vec4b>(y, x)[2] = pixels[actualI + 0];
+		src.at<cv::Vec4b>(y, x)[3] = 255;
 	}
 	// get rotation matrix for rotating the image around its center in pixel coordinates
 	cv::Point2f center((src.cols - 1) / 2.0, (src.rows - 1) / 2.0);
@@ -238,16 +237,19 @@ void ofApp::rotateImage(int angle) {
 
 	cv::Mat dst;
 	cv::warpAffine(src, dst, rot, bbox.size());
+
+
 	image.resize(dst.cols, dst.rows);
 	size = image.getWidth() * image.getHeight();
-	pixels = image.getPixels();
+	pixels.allocate(dst.cols, dst.rows, OF_IMAGE_COLOR_ALPHA);
 	for (int i = 0; i < size; i++) {
 		int actualI = i * bpp;
 		int y = int((float)i / (float)image.getWidth());
 		int x = i - y * image.getWidth();
-		pixels[actualI + 2] = dst.at<cv::Vec3b>(y, x)[0];
-		pixels[actualI + 1] = dst.at<cv::Vec3b>(y, x)[1];
-		pixels[actualI + 0] = dst.at<cv::Vec3b>(y, x)[2];
+		pixels[actualI + 2] = dst.at<cv::Vec4b>(y, x)[0];
+		pixels[actualI + 1] = dst.at<cv::Vec4b>(y, x)[1];
+		pixels[actualI + 0] = dst.at<cv::Vec4b>(y, x)[2];
+		pixels[actualI + 3] = dst.at<cv::Vec4b>(y, x)[3];
 	}
 	image.setFromPixels(pixels);
 	pixels = image.getPixels();
@@ -285,7 +287,7 @@ void ofApp::convertVecToCharPixels(vector<unsigned char> &charVec, glm::vec3* ve
 
 //--------------------------------------------------------------
 void ofApp::draw() {
-	if (tempImage.isAllocated()) {
+	if (image.isAllocated()) {
 
 		int wid = image.getWidth();
 		int hei = image.getHeight();
@@ -301,8 +303,13 @@ void ofApp::draw() {
 				hei = 768;
 			}
 		}*/
-		image.draw(0, 0, wid, hei);
-		//cvImage.draw(0, 0);
+		ofTranslate(image.getWidth() / 2, image.getHeight() / 2);
+		ofRotate(angle);
+		ofTranslate(-image.getWidth() / 2.5, -image.getHeight() / 2.5);
+		image.draw(0, 0);// , wid, hei);
+		ofTranslate(image.getWidth() / 2.5, image.getHeight() / 2.5);
+		ofRotate(-angle);
+		ofTranslate(-image.getWidth() / 2, -image.getHeight() / 2);
 	}
 	gui.draw();
 }
@@ -314,12 +321,29 @@ void ofApp::loadImage(std::string fileName) {
 	std::string extension = "." + filePath.getFileExt(fileName);
 
 	if (imageExtensions.find(extension) != imageExtensions.end()) {
-		tempImage.load("images/" + fileName);
-		pixels = tempImage.getPixels();
+		image.load("images/" + fileName);
+		if (image.getPixels().getBytesPerPixel() < 4) {
+			pixels.allocate(image.getWidth(), image.getHeight(), OF_IMAGE_COLOR_ALPHA);
+			ofPixels tempPixels = image.getPixels();
+			int size = image.getWidth() * image.getHeight();
+			int bpp = tempPixels.getBytesPerPixel();
+			for (int i = 0; i < size; i++) {
+				int rgbI = i * bpp;
+				int rgbaI = i * 4;
+				pixels[rgbaI + 0] = tempPixels[rgbI + 0];
+				pixels[rgbaI + 1] = tempPixels[rgbI + 1];
+				pixels[rgbaI + 2] = tempPixels[rgbI + 2];
+				pixels[rgbaI + 3] = 255;
+			}
+		}
+		else {
+			pixels = image.getPixels();
+		}
 		currentMode = Mode::Image;
 		image.setFromPixels(pixels);
+		unrotatedWidth = image.getWidth();
+		unrotatedHeight = image.getHeight();
 		rotateImage(angle);
-		//image.rotate(angle, image.getWidth() / 2, image.getHeight() / 2);
 		pixels = image.getPixels();
 
 	}
@@ -361,7 +385,7 @@ void ofApp::loadImage(std::string fileName) {
 			hei = 768;
 		}
 	}*/
-	ofSetWindowShape(image.getWidth() + guiWidth, image.getHeight());
+	ofSetWindowShape(unrotatedWidth + guiWidth, unrotatedHeight);
 	resetGuiPosition();
 	sortingIndex = 0;
 	started = false;
@@ -429,14 +453,14 @@ void ofApp::setupGui() {
 }
 
 void ofApp::saveCurrentImage() {
-	//if (image.isAllocated()) {
-	//	ofFilePath filePath;
-	//	std::string fileName = filePath.getBaseName(currentFileName);
-	//	std::string extension = "." + filePath.getFileExt(currentFileName);
-	//	std::string fullName = fileName + "1" + extension;
-	//	image.save("images/" + fullName);
-	//	currentFileName = fullName;
-	//}
+	if (image.isAllocated()) {
+		ofFilePath filePath;
+		std::string fileName = filePath.getBaseName(currentFileName);
+		std::string extension = "." + filePath.getFileExt(currentFileName);
+		std::string fullName = fileName + "1" + extension;
+		image.save("images/" + fullName);
+		currentFileName = fullName;
+	}
 	
 }
 
