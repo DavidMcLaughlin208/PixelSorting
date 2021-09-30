@@ -14,7 +14,7 @@ satyarth has already created a comprehensive [command line tool](https://github.
 I wanted to be able to easily apply pixel sorting to videos files but that would require a lot of manual work using existing tools. 
 
 Additionally, I wanted to implement multithreading on the pixel sort algorithm to speed it up which will be especially useful for sorting long videos.
-The single threaded python application can sort a 1920x1200 image with thresholds set from 0-1 (worst case scenario, every pixel is sorted) in about 9 seconds.
+The single threaded python application can sort a 1920x1200 image with thresholds set from 0-1 (worst case scenario where every pixel is sorted) in about 9 seconds.
 This c++ multithreaded application can perform the same sort on the same image in 2.5 seconds while showing the image as its being sorted.
 
 I also wanted to created an application with a gui to give more immediate visual feedback to the user and add other tools such as mask drawing in app.
@@ -31,11 +31,10 @@ This application is still in development. I plan to publish some iterations in t
 ### Todo List:
 
 * Add masking functionality
- * Add GUI panel for mask info
- * Use mask to determine eligible pixels for sorting
- * Use mask as intervals
- * Add ability to draw custom mask in application
-* Add arbitrary rotation angles for sorting (not just horizontal/vertical)
+  * Add GUI panel for mask info
+  * Use mask to determine eligible pixels for sorting
+  * Use mask as intervals
+  * Add ability to draw custom mask in application
 * Improve UI clarity and usability
  * Add diagnostics and metrics to be shown in app (time taken, current frame for videos)
  * Add ability to apply curves or easing functions to parameter values to change them over the course of a video sorting

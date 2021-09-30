@@ -17,21 +17,10 @@ struct SaturationComparator {
 	bool operator() (ofColor i, ofColor j) { return (i.getSaturation() < j.getSaturation()); }
 } saturationComparator;
 
-void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth, int imageHeight, ofPixels& pixelsRef, ofApp::SortParameter sortParameter, float threshold, float upperThreshold) {
-	int widthOrHeight;
+void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pixelsRef, ofApp::SortParameter sortParameter, float threshold, float upperThreshold) {
 	int start = startIndex;
-	int end;
-	int columnsOrRows;
-	if (horizontal) {
-		widthOrHeight = imageWidth;
-		end = (start + 1) * widthOrHeight;
-		columnsOrRows = imageHeight;
-	}
-	else {
-		widthOrHeight = 0;
-		end = imageHeight;
-		columnsOrRows = imageWidth;
-	}
+	int end = (start + 1) * imageWidth;
+	int columnsOrRows = imageHeight;
 	float highestVal;
 	int indexOfHighest;
 
@@ -42,8 +31,8 @@ void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth,
 
 	ofColor color;
 	char pixelSwapBuffer[4];
-	for (int i = start * widthOrHeight; i < end; i++) {
-		int actualI = horizontal ? actualI = i * bytesPerPixel : i * imageWidth * bytesPerPixel + (start * bytesPerPixel);
+	for (int i = start * imageWidth; i < end; i++) {
+		int actualI = i * bytesPerPixel;
 		color.set(pixelsRef[actualI + 0], pixelsRef[actualI + 1], pixelsRef[actualI + 2], pixelsRef[actualI + 3]);
 		float value = 0.0;
 
@@ -94,30 +83,28 @@ void pixelSortRow(int startIndex, bool horizontal, bool reverse, int imageWidth,
 		vector<ofColor> intervalColors;
 		intervalColors.resize(endOfInterval - startOfInterval + 1);
 		for (int s = startOfInterval; s <= endOfInterval; s++) {
-			int modS = reverse ? endOfInterval - s + startOfInterval : s;
-			int actualS = horizontal ? modS * bytesPerPixel : modS * imageWidth * bytesPerPixel + (start * bytesPerPixel);
+			int actualS = s * bytesPerPixel;
 			intervalColors[s - startOfInterval].r = pixelsRef[actualS + 0];
 			intervalColors[s - startOfInterval].g = pixelsRef[actualS + 1];
 			intervalColors[s - startOfInterval].b = pixelsRef[actualS + 2];
 		}
 		switch (sortParameter) {
-		case ofApp::SortParameter::Brightness:
-			std::sort(intervalColors.begin(), intervalColors.end(), brightnessComparator);
-			break;
+			case ofApp::SortParameter::Brightness:
+				std::sort(intervalColors.begin(), intervalColors.end(), brightnessComparator);
+				break;
 
-		case ofApp::SortParameter::Hue:
-			std::sort(intervalColors.begin(), intervalColors.end(), hueComparator);
-			break;
+			case ofApp::SortParameter::Hue:
+				std::sort(intervalColors.begin(), intervalColors.end(), hueComparator);
+				break;
 
-		case ofApp::SortParameter::Saturation:
-			std::sort(intervalColors.begin(), intervalColors.end(), saturationComparator);
-			break;
+			case ofApp::SortParameter::Saturation:
+				std::sort(intervalColors.begin(), intervalColors.end(), saturationComparator);
+				break;
 
 		}
 
 		for (int s = startOfInterval; s <= endOfInterval; s++) {
-			int modS = reverse ? endOfInterval - s + startOfInterval : s;
-			int actualS = horizontal ? modS * bytesPerPixel : modS * imageWidth * bytesPerPixel + (start * bytesPerPixel);
+			int actualS = s * bytesPerPixel;
 			pixelsRef[actualS + 0] = intervalColors[s - startOfInterval].r;
 			pixelsRef[actualS + 1] = intervalColors[s - startOfInterval].g;
 			pixelsRef[actualS + 2] = intervalColors[s - startOfInterval].b;
@@ -136,6 +123,7 @@ void ofApp::setup() {
 
 	imageExtensions.insert(".png");
 	imageExtensions.insert(".jpg");
+	imageExtensions.insert(".jpeg");
 
 	sortParameterTable.insert(std::pair<std::string, SortParameter>(BRIGHTNESS, SortParameter::Brightness));
 	sortParameterTable.insert(std::pair<std::string, SortParameter>(HUE, SortParameter::Hue));
@@ -149,17 +137,14 @@ void ofApp::update() {
 	threshold = thresholdSlider;
 	upperThreshold = upperThresholdSlider;
 	angle = angleSlider;
-	horizontal = horizontalToggle;
-	reverse = reverseSort;
 	threadCount = threadCountSlider;
 	if (started) {
 		vector<std::thread> threadList;
 		for (int i = 0; i < threadCount; i++) {
-			threadList.push_back(std::thread(pixelSortRow, sortingIndex, this->horizontal, this->reverse, image.getWidth(), image.getHeight(), std::ref(pixels), currentlySelectedThresholdVariable, threshold, upperThreshold));
+			threadList.push_back(std::thread(pixelSortRow, sortingIndex, image.getWidth(), image.getHeight(), std::ref(pixels), currentlySelectedThresholdVariable, threshold, upperThreshold));
 			sortingIndex += 1;
 
-			int columnsOrRows = this->horizontal ? image.getHeight() : image.getWidth();
-			if (sortingIndex >= columnsOrRows - 1) {
+			if (sortingIndex >= image.getHeight() - 1) {
 				sortingIndex = 0;
 				sortComplete = true;
 				timeEnd = std::chrono::high_resolution_clock::now();
@@ -180,10 +165,9 @@ void ofApp::update() {
 			sortComplete = false;
 			if (currentMode == Mode::Image) {
 				started = false;
-				//rotateImage(-angle);
-				pixels = image.getPixels();
+				
 				image.setFromPixels(pixels);
-				//image.setFromPixels(pixels);
+				//currentImageAngle = 0;
 			}
 			else if (currentMode == Mode::Video) {
 				saveFrameToVideo();
@@ -209,7 +193,7 @@ void ofApp::update() {
 }
 
 // Code adapted to work with OF pulled from here: https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c/33564950#33564950
-void ofApp::rotateImage(int angle) {
+void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	if (angle == 0) {
 		return;
 	}
@@ -221,22 +205,31 @@ void ofApp::rotateImage(int angle) {
 		int actualI = i * bpp;
 		int y = int((float)i / (float)image.getWidth());
 		int x = i - y * image.getWidth();
+		// The mismatch of indices here is because Mat is in BGRA and pixels is in RGBA format
 		src.at<cv::Vec4b>(y, x)[0] = pixels[actualI + 2];
 		src.at<cv::Vec4b>(y, x)[1] = pixels[actualI + 1];
 		src.at<cv::Vec4b>(y, x)[2] = pixels[actualI + 0];
-		src.at<cv::Vec4b>(y, x)[3] = 255;
+		src.at<cv::Vec4b>(y, x)[3] = pixels[actualI + 3];
 	}
+	
 	// get rotation matrix for rotating the image around its center in pixel coordinates
 	cv::Point2f center((src.cols - 1) / 2.0, (src.rows - 1) / 2.0);
 	cv::Mat rot = cv::getRotationMatrix2D(center, angle, 1.0);
 	// determine bounding rectangle, center not relevant
-	cv::Rect2f bbox = cv::RotatedRect(cv::Point2f(), src.size(), angle).boundingRect2f();
-	// adjust transformation matrix
-	rot.at<double>(0, 2) += bbox.width / 2.0 - src.cols / 2.0;
-	rot.at<double>(1, 2) += bbox.height / 2.0 - src.rows / 2.0;
+	cv::Size boxSize;
+	if (!paddingAddedToImage) {
+		cv::Rect2f bbox = cv::RotatedRect(cv::Point2f(), src.size(), 45).boundingRect2f();
+		// adjust transformation matrix
+		boxSize = bbox.size();
+	}
+	else {
+		boxSize = src.size();
+	}
+	rot.at<double>(0, 2) += boxSize.width / 2.0 - src.cols / 2.0;
+	rot.at<double>(1, 2) += boxSize.height / 2.0 - src.rows / 2.0;
 
 	cv::Mat dst;
-	cv::warpAffine(src, dst, rot, bbox.size());
+	cv::warpAffine(src, dst, rot, boxSize);
 
 
 	image.resize(dst.cols, dst.rows);
@@ -303,13 +296,18 @@ void ofApp::draw() {
 				hei = 768;
 			}
 		}*/
-		ofTranslate(image.getWidth() / 2, image.getHeight() / 2);
-		ofRotate(angle);
-		ofTranslate(-image.getWidth() / 2.5, -image.getHeight() / 2.5);
-		image.draw(0, 0);// , wid, hei);
-		ofTranslate(image.getWidth() / 2.5, image.getHeight() / 2.5);
-		ofRotate(-angle);
-		ofTranslate(-image.getWidth() / 2, -image.getHeight() / 2);
+		//if (started) {
+			ofTranslate(image.getWidth() / 2, image.getHeight() / 2);
+			ofRotate(currentImageAngle);
+			ofTranslate(-image.getWidth() / 2.5, -image.getHeight() / 2.5);
+			image.draw(0, 0);// , wid, hei);
+			ofTranslate(image.getWidth() / 2.5, image.getHeight() / 2.5);
+			ofRotate(-currentImageAngle);
+			ofTranslate(-image.getWidth() / 2, -image.getHeight() / 2);
+		//}
+		//else {
+		//	image.draw(0, 0);
+		//}
 	}
 	gui.draw();
 }
@@ -322,30 +320,12 @@ void ofApp::loadImage(std::string fileName) {
 
 	if (imageExtensions.find(extension) != imageExtensions.end()) {
 		image.load("images/" + fileName);
-		if (image.getPixels().getBytesPerPixel() < 4) {
-			pixels.allocate(image.getWidth(), image.getHeight(), OF_IMAGE_COLOR_ALPHA);
-			ofPixels tempPixels = image.getPixels();
-			int size = image.getWidth() * image.getHeight();
-			int bpp = tempPixels.getBytesPerPixel();
-			for (int i = 0; i < size; i++) {
-				int rgbI = i * bpp;
-				int rgbaI = i * 4;
-				pixels[rgbaI + 0] = tempPixels[rgbI + 0];
-				pixels[rgbaI + 1] = tempPixels[rgbI + 1];
-				pixels[rgbaI + 2] = tempPixels[rgbI + 2];
-				pixels[rgbaI + 3] = 255;
-			}
-		}
-		else {
-			pixels = image.getPixels();
-		}
+		image.setImageType(OF_IMAGE_COLOR_ALPHA);
 		currentMode = Mode::Image;
-		image.setFromPixels(pixels);
 		unrotatedWidth = image.getWidth();
 		unrotatedHeight = image.getHeight();
-		rotateImage(angle);
 		pixels = image.getPixels();
-
+		paddingAddedToImage = false;
 	}
 	else if (videoExtensions.find(extension) != videoExtensions.end()) {
 		if (videoPlayer.isLoaded()) {
@@ -392,9 +372,18 @@ void ofApp::loadImage(std::string fileName) {
 }
 
 void ofApp::start() {
+	if (currentMode == Mode::None) {
+		return;
+	}
 	started = !started;
 	if (started) {
 		timeStart = std::chrono::high_resolution_clock::now();
+		if (angle != currentImageAngle) {
+			rotateImage(angle - currentImageAngle, paddingAddedToImage);
+			paddingAddedToImage = true;
+		}
+
+		currentImageAngle = angle;
 	}
 	else {
 		videoWriter.release();
@@ -427,10 +416,6 @@ void ofApp::setupGui() {
 	gui.add(thresholdSlider.setup("Threshold", 0.25, 0.0, 1.0));
 	gui.add(upperThresholdSlider.setup("Upper Threshold", 0.8, 0.0, 1.0));
 	gui.add(angleSlider.setup("Angle", 0, 0, 359));
-	gui.add(horiztonalToggleLabel.setup((std::string) "Horzontal Sort"));
-	gui.add(horizontalToggle.setup("Horizontal"));
-	gui.add(reverseSortLabel.setup((string)"Reverse Direction"));
-	gui.add(reverseSort.setup("Reverse Sort"));
 	gui.add(threadCountSlider.setup("Thread Count", 17, 0, 30));
 
 	gui.add(selectedThresholdVariable.setup((string)"Sorting by: " + BRIGHTNESS));
@@ -458,8 +443,20 @@ void ofApp::saveCurrentImage() {
 		std::string fileName = filePath.getBaseName(currentFileName);
 		std::string extension = "." + filePath.getFileExt(currentFileName);
 		std::string fullName = fileName + "1" + extension;
+		ofPixels copy;
+		copy.allocate(pixels.getWidth(), pixels.getHeight(), pixels.getImageType());
+		pixels.pasteInto(copy, 0, 0);
+		rotateImage(-currentImageAngle, paddingAddedToImage);
+		int originalImageX = image.getWidth() / 2 - unrotatedWidth / 2;
+		int originalImageY = image.getHeight() / 2 - unrotatedHeight / 2;
+		pixels.crop(originalImageX + 1, originalImageY + 1, unrotatedWidth, unrotatedHeight);
+		image.resize(pixels.getWidth(), pixels.getHeight());
+		image.setFromPixels(pixels);
 		image.save("images/" + fullName);
 		currentFileName = fullName;
+		pixels.allocate(copy.getWidth(), copy.getHeight(), OF_IMAGE_COLOR_ALPHA);
+		copy.pasteInto(pixels, 0, 0);
+		image.setFromPixels(pixels);
 	}
 	
 }

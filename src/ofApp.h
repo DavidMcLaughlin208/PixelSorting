@@ -25,8 +25,7 @@ class ofApp : public ofBaseApp{
 			Saturation
 		};
 
-
-		void rotateImage(int angle);
+		void rotateImage(int angle, bool paddingAddedToImage);
 		void setup();
 		void update();
 		void convertVecToCharPixels(vector<unsigned char> &charVec, glm::vec3* vecPointer, int bytesPerPixel, int pixelsBufferSize);
@@ -78,10 +77,6 @@ class ofApp : public ofBaseApp{
 		vector<ofxButton*> buttons;
 		ofxButton sortButton;
 		ofxButton saveButton;
-		ofxToggle horizontalToggle;
-		ofxToggle reverseSort;
-		ofxLabel reverseSortLabel;
-		ofxLabel horiztonalToggleLabel;
 		char pixelSwapBuffer[4];
 
 		int sortingIndex = 0;
@@ -91,9 +86,9 @@ class ofApp : public ofBaseApp{
 		float threshold = 0.25f;
 		float upperThreshold = 0.8f;
 		int angle = 0;
-		bool horizontal = false;
-		bool reverse = false;
+		int currentImageAngle = 0;
 		bool sortComplete = false;
+		bool paddingAddedToImage = false;
 
 		int threadCount = 10;
 		ofxIntSlider threadCountSlider;
