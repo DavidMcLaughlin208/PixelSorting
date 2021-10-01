@@ -216,15 +216,11 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	cv::Point2f center((src.cols - 1) / 2.0, (src.rows - 1) / 2.0);
 	cv::Mat rot = cv::getRotationMatrix2D(center, angle, 1.0);
 	// determine bounding rectangle, center not relevant
-	cv::Size boxSize;
-	if (!paddingAddedToImage) {
-		cv::Rect2f bbox = cv::RotatedRect(cv::Point2f(), src.size(), 45).boundingRect2f();
-		// adjust transformation matrix
-		boxSize = bbox.size();
-	}
-	else {
+	cv::Size boxSize = cv::RotatedRect(cv::Point2f(), cv::Size(unrotatedWidth, unrotatedHeight), angle).boundingRect2f().size();
+	if (boxSize.area() < src.size().area()) {
 		boxSize = src.size();
 	}
+	// adjust transformation matrix
 	rot.at<double>(0, 2) += boxSize.width / 2.0 - src.cols / 2.0;
 	rot.at<double>(1, 2) += boxSize.height / 2.0 - src.rows / 2.0;
 
@@ -246,6 +242,10 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	}
 	image.setFromPixels(pixels);
 	pixels = image.getPixels();
+
+	currentRotatedRect = cv::RotatedRect(cv::Point2i(image.getWidth() / 2, image.getHeight() / 2), cv::Size(unrotatedWidth, unrotatedHeight), angle);
+	ofSetWindowShape(image.getWidth() + guiWidth, image.getHeight());
+	resetGuiPosition();
 }
 
 void ofApp::saveFrameToVideo() {
@@ -296,18 +296,23 @@ void ofApp::draw() {
 				hei = 768;
 			}
 		}*/
-		//if (started) {
-			ofTranslate(image.getWidth() / 2, image.getHeight() / 2);
-			ofRotate(currentImageAngle);
-			ofTranslate(-image.getWidth() / 2.5, -image.getHeight() / 2.5);
-			image.draw(0, 0);// , wid, hei);
-			ofTranslate(image.getWidth() / 2.5, image.getHeight() / 2.5);
-			ofRotate(-currentImageAngle);
-			ofTranslate(-image.getWidth() / 2, -image.getHeight() / 2);
-		//}
-		//else {
-		//	image.draw(0, 0);
-		//}
+		
+		cv::Point2f points[4];
+		currentRotatedRect.points(points);
+		cv::Point2f topLeftPoint = points[0];
+		ofPushMatrix();
+		//ofTranslate(-topLeftPoint.x, -topLeftPoint.y);
+		ofTranslate(image.getWidth() / 2, image.getHeight() / 2 );
+		ofRotate(angle, 0, 0, 1);
+		ofTranslate(-image.getWidth() / 2, -image.getHeight() / 2);
+		ofTranslate(ratioSlider, ratioSliderY);
+		ofPushMatrix();
+		image.draw(0,0);// , wid, hei);
+		ofPopMatrix();
+		ofPopMatrix();
+		//ofRotate(angle,0,0,1);
+		//ofTranslate(topLeftPoint.x, -topLeftPoint.y);
+		//ofTranslate(image.getWidth() / 2, image.getHeight() / 2);
 	}
 	gui.draw();
 }
@@ -326,6 +331,7 @@ void ofApp::loadImage(std::string fileName) {
 		unrotatedHeight = image.getHeight();
 		pixels = image.getPixels();
 		paddingAddedToImage = false;
+		currentRotatedRect = cv::RotatedRect(cv::Point2i(image.getWidth() / 2, image.getHeight() / 2), cv::Size(image.getWidth(), image.getHeight()), 0);
 	}
 	else if (videoExtensions.find(extension) != videoExtensions.end()) {
 		if (videoPlayer.isLoaded()) {
@@ -417,6 +423,8 @@ void ofApp::setupGui() {
 	gui.add(upperThresholdSlider.setup("Upper Threshold", 0.8, 0.0, 1.0));
 	gui.add(angleSlider.setup("Angle", 0, 0, 359));
 	gui.add(threadCountSlider.setup("Thread Count", 17, 0, 30));
+	gui.add(ratioSlider.setup("DrawRatio", 0.0, -100.0, 250.0));
+	gui.add(ratioSliderY.setup("DrawRatioY", 0.0, -100.0, 250.0));
 
 	gui.add(selectedThresholdVariable.setup((string)"Sorting by: " + BRIGHTNESS));
 	gui.add(brightnessRadio.setup(BRIGHTNESS));
@@ -454,8 +462,9 @@ void ofApp::saveCurrentImage() {
 		image.setFromPixels(pixels);
 		image.save("images/" + fullName);
 		currentFileName = fullName;
-		pixels.allocate(copy.getWidth(), copy.getHeight(), OF_IMAGE_COLOR_ALPHA);
-		copy.pasteInto(pixels, 0, 0);
+		//pixels.allocate(copy.getWidth(), copy.getHeight(), OF_IMAGE_COLOR_ALPHA);
+		//copy.pasteInto(pixels, 0, 0);
+		pixels = copy;
 		image.setFromPixels(pixels);
 	}
 	
