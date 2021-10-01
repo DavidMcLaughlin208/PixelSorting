@@ -73,15 +73,11 @@ class ofApp : public ofBaseApp{
 		int guiWidth = 200;
 		ofxFloatSlider thresholdSlider;
 		ofxFloatSlider upperThresholdSlider;
-		ofxFloatSlider ratioSlider;
-		ofxFloatSlider ratioSliderY;
 		ofxIntSlider angleSlider;
 		vector<ofxButton*> buttons;
 		ofxButton sortButton;
 		ofxButton saveButton;
 		char pixelSwapBuffer[4];
-
-		cv::RotatedRect currentRotatedRect;
 
 		int sortingIndex = 0;
 		bool started = false;

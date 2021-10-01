@@ -242,10 +242,6 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	}
 	image.setFromPixels(pixels);
 	pixels = image.getPixels();
-
-	currentRotatedRect = cv::RotatedRect(cv::Point2i(image.getWidth() / 2, image.getHeight() / 2), cv::Size(unrotatedWidth, unrotatedHeight), angle);
-	ofSetWindowShape(image.getWidth() + guiWidth, image.getHeight());
-	resetGuiPosition();
 }
 
 void ofApp::saveFrameToVideo() {
@@ -296,23 +292,14 @@ void ofApp::draw() {
 				hei = 768;
 			}
 		}*/
-		
-		cv::Point2f points[4];
-		currentRotatedRect.points(points);
-		cv::Point2f topLeftPoint = points[0];
 		ofPushMatrix();
-		//ofTranslate(-topLeftPoint.x, -topLeftPoint.y);
-		ofTranslate(image.getWidth() / 2, image.getHeight() / 2 );
-		ofRotate(angle, 0, 0, 1);
+		ofTranslate(unrotatedWidth / 2, unrotatedHeight / 2 );
+		ofRotate(currentImageAngle, 0, 0, 1);
 		ofTranslate(-image.getWidth() / 2, -image.getHeight() / 2);
-		ofTranslate(ratioSlider, ratioSliderY);
 		ofPushMatrix();
 		image.draw(0,0);// , wid, hei);
 		ofPopMatrix();
 		ofPopMatrix();
-		//ofRotate(angle,0,0,1);
-		//ofTranslate(topLeftPoint.x, -topLeftPoint.y);
-		//ofTranslate(image.getWidth() / 2, image.getHeight() / 2);
 	}
 	gui.draw();
 }
@@ -331,7 +318,7 @@ void ofApp::loadImage(std::string fileName) {
 		unrotatedHeight = image.getHeight();
 		pixels = image.getPixels();
 		paddingAddedToImage = false;
-		currentRotatedRect = cv::RotatedRect(cv::Point2i(image.getWidth() / 2, image.getHeight() / 2), cv::Size(image.getWidth(), image.getHeight()), 0);
+		currentImageAngle = 0;
 	}
 	else if (videoExtensions.find(extension) != videoExtensions.end()) {
 		if (videoPlayer.isLoaded()) {
@@ -423,8 +410,6 @@ void ofApp::setupGui() {
 	gui.add(upperThresholdSlider.setup("Upper Threshold", 0.8, 0.0, 1.0));
 	gui.add(angleSlider.setup("Angle", 0, 0, 359));
 	gui.add(threadCountSlider.setup("Thread Count", 17, 0, 30));
-	gui.add(ratioSlider.setup("DrawRatio", 0.0, -100.0, 250.0));
-	gui.add(ratioSliderY.setup("DrawRatioY", 0.0, -100.0, 250.0));
 
 	gui.add(selectedThresholdVariable.setup((string)"Sorting by: " + BRIGHTNESS));
 	gui.add(brightnessRadio.setup(BRIGHTNESS));
