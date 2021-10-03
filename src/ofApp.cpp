@@ -216,9 +216,13 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	cv::Point2f center((src.cols - 1) / 2.0, (src.rows - 1) / 2.0);
 	cv::Mat rot = cv::getRotationMatrix2D(center, angle, 1.0);
 	// determine bounding rectangle, center not relevant
-	cv::Size boxSize = cv::RotatedRect(cv::Point2f(), cv::Size(unrotatedWidth, unrotatedHeight), angle).boundingRect2f().size();
-	if (boxSize.area() < src.size().area()) {
+	cv::Size boxSize;
+	if (paddingAddedToImage) {
 		boxSize = src.size();
+	}
+	else {
+		int diagonal = (int)sqrt(src.cols * src.cols + src.rows * src.rows);
+		boxSize = cv::Size(diagonal, diagonal);
 	}
 	// adjust transformation matrix
 	rot.at<double>(0, 2) += boxSize.width / 2.0 - src.cols / 2.0;
@@ -297,7 +301,7 @@ void ofApp::draw() {
 		ofRotate(currentImageAngle, 0, 0, 1);
 		ofTranslate(-image.getWidth() / 2, -image.getHeight() / 2);
 		ofPushMatrix();
-		image.draw(0,0);// , wid, hei);
+		image.draw(0,0, wid , hei);
 		ofPopMatrix();
 		ofPopMatrix();
 	}
