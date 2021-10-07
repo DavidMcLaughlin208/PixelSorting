@@ -203,8 +203,8 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	src = cv::Mat_<cv::Vec4b>(image.getHeight(), image.getWidth());
 	for (int i = 0; i < size; i++) {
 		int actualI = i * bpp;
-		int y = int((float)i / (float)image.getWidth());
-		int x = i - y * image.getWidth();
+		int y = int((double)i / (double)image.getWidth());
+		int x = i - (double)y * image.getWidth();
 		// The mismatch of indices here is because Mat is in BGRA and pixels is in RGBA format
 		src.at<cv::Vec4b>(y, x)[0] = pixels[actualI + 2];
 		src.at<cv::Vec4b>(y, x)[1] = pixels[actualI + 1];
@@ -237,8 +237,8 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	pixels.allocate(dst.cols, dst.rows, OF_IMAGE_COLOR_ALPHA);
 	for (int i = 0; i < size; i++) {
 		int actualI = i * bpp;
-		int y = int((float)i / (float)image.getWidth());
-		int x = i - y * image.getWidth();
+		int y = int((double)i / (double)image.getWidth());
+		int x = i - (double) y * image.getWidth();
 		pixels[actualI + 2] = dst.at<cv::Vec4b>(y, x)[0];
 		pixels[actualI + 1] = dst.at<cv::Vec4b>(y, x)[1];
 		pixels[actualI + 0] = dst.at<cv::Vec4b>(y, x)[2];
@@ -306,6 +306,10 @@ void ofApp::draw() {
 		ofPopMatrix();
 	}
 	gui.draw();
+}
+
+void ofApp::loadMask(std::string fileName) {
+	
 }
 
 void ofApp::loadImage(std::string fileName) {

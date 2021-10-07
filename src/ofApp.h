@@ -36,6 +36,7 @@ class ofApp : public ofBaseApp{
 		void selectParameterRadioButton(const void* sender);
 		bool clickedOnLabel(const void* sender);
 
+		void loadMask(std::string fileName);
 		void loadImage(std::string fileName);
 
 		void resetGuiPosition();
@@ -66,6 +67,9 @@ class ofApp : public ofBaseApp{
 		int unrotatedWidth;
 		int unrotatedHeight;
 
+		ofImage mask;
+		bool useMask = false;
+
 		//ofxCvColorImage cvImage;
 		ofPixels pixels;
 
@@ -74,6 +78,7 @@ class ofApp : public ofBaseApp{
 		ofxFloatSlider thresholdSlider;
 		ofxFloatSlider upperThresholdSlider;
 		ofxIntSlider angleSlider;
+		ofxToggle maskToggle;
 		vector<ofxButton*> buttons;
 		ofxButton sortButton;
 		ofxButton saveButton;
