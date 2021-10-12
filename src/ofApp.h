@@ -26,6 +26,7 @@ class ofApp : public ofBaseApp{
 		};
 
 		void rotateImage(int angle, bool paddingAddedToImage);
+		void rotateMask(int angle, bool paddingAddedToMask);
 		void setup();
 		void update();
 		void convertVecToCharPixels(vector<unsigned char> &charVec, glm::vec3* vecPointer, int bytesPerPixel, int pixelsBufferSize);
@@ -72,6 +73,8 @@ class ofApp : public ofBaseApp{
 		ofImage maskCopy;
 		bool useMask = false;
 		bool drawMask = false;
+		int maskCurrentAngle = 0;
+		bool paddingAddedToMask = false;
 
 		ofPixels imagePixels;
 		ofPixels maskPixels;

@@ -50,18 +50,12 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 				break;
 
 		}
-		bool maskApproved = false;
+		bool maskApproved = true;
 		if (useMask) {
 			int y = int((double)i / (double) pixelsRef.getWidth());
 			int x = i - (double)y * pixelsRef.getWidth();
 			if (x < maskPixelsRef.getWidth() && y < maskPixelsRef.getHeight()) {
-				int alphaValue = maskPixelsRef.getColor(x, y).a;
-				if (alphaValue > 0) {
-					maskApproved = true;
-				}
-				else {
-					maskApproved = false;
-				}
+				maskApproved = maskPixelsRef.getColor(x, y).a > 0;
 			}
 		}
 
@@ -158,7 +152,7 @@ void ofApp::update() {
 	if (started) {
 		vector<std::thread> threadList;
 		for (int i = 0; i < threadCount; i++) {
-			threadList.push_back(std::thread(pixelSortRow, sortingIndex, image.getWidth(), image.getHeight(), std::ref(imagePixels), std::ref(maskPixels), currentlySelectedThresholdVariable, threshold, upperThreshold, useMask));
+			threadList.push_back(std::thread(pixelSortRow, sortingIndex, image.getWidth(), image.getHeight(), std::ref(imagePixels), std::ref(maskCopyPixels), currentlySelectedThresholdVariable, threshold, upperThreshold, useMask));
 			sortingIndex += 1;
 
 			if (sortingIndex >= image.getHeight() - 1) {
@@ -263,9 +257,62 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	}
 	image.setFromPixels(imagePixels);
 	imagePixels = image.getPixels();
+}
 
-	/*maskCopyPixels.clear();
-	maskCopyPixels.allocate(unrotatedWidth, unrotatedHeight, OF_IMAGE_COLOR_ALPHA);*/
+void ofApp::rotateMask(int angle, bool paddingAddedToMask) {
+	if (angle == 0) {
+		return;
+	}
+	int size = maskCopyPixels.getWidth() * maskCopyPixels.getHeight();
+	int bpp = maskCopyPixels.getBytesPerPixel();
+	cv::Mat src;
+	src = cv::Mat_<cv::Vec4b>(maskCopyPixels.getHeight(), maskCopyPixels.getWidth());
+	for (int i = 0; i < size; i++) {
+		int actualI = i * bpp;
+		int y = int((double)i / (double)maskCopyPixels.getWidth());
+		int x = i - (double)y * maskCopyPixels.getWidth();
+		// The mismatch of indices here is because Mat is in BGRA and pixels is in RGBA format
+		src.at<cv::Vec4b>(y, x)[0] = maskCopyPixels[actualI + 2];
+		src.at<cv::Vec4b>(y, x)[1] = maskCopyPixels[actualI + 1];
+		src.at<cv::Vec4b>(y, x)[2] = maskCopyPixels[actualI + 0];
+		src.at<cv::Vec4b>(y, x)[3] = maskCopyPixels[actualI + 3];
+	}
+
+	// get rotation matrix for rotating the image around its center in pixel coordinates
+	cv::Point2f center((src.cols - 1) / 2.0, (src.rows - 1) / 2.0);
+	cv::Mat rot = cv::getRotationMatrix2D(center, angle, 1.0);
+	// determine bounding rectangle, center not relevant
+	cv::Size boxSize;
+	if (paddingAddedToMask) {
+		boxSize = src.size();
+	}
+	else {
+		int diagonal = (int)sqrt(src.cols * src.cols + src.rows * src.rows);
+		boxSize = cv::Size(diagonal, diagonal);
+	}
+	// adjust transformation matrix
+	rot.at<double>(0, 2) += boxSize.width / 2.0 - src.cols / 2.0;
+	rot.at<double>(1, 2) += boxSize.height / 2.0 - src.rows / 2.0;
+
+	cv::Mat dst;
+	cv::warpAffine(src, dst, rot, boxSize);
+
+
+	maskCopy.resize(dst.cols, dst.rows);
+	size = image.getWidth() * image.getHeight();
+	maskCopyPixels.allocate(dst.cols, dst.rows, OF_IMAGE_COLOR_ALPHA);
+	for (int i = 0; i < size; i++) {
+		int actualI = i * bpp;
+		int y = int((double)i / (double)image.getWidth());
+		int x = i - (double)y * image.getWidth();
+		maskCopyPixels[actualI + 2] = dst.at<cv::Vec4b>(y, x)[0];
+		maskCopyPixels[actualI + 1] = dst.at<cv::Vec4b>(y, x)[1];
+		maskCopyPixels[actualI + 0] = dst.at<cv::Vec4b>(y, x)[2];
+		maskCopyPixels[actualI + 3] = dst.at<cv::Vec4b>(y, x)[3];
+	}
+	maskCopy.setFromPixels(maskCopyPixels);
+	maskCopyPixels = maskCopy.getPixels();
+
 }
 
 void ofApp::saveFrameToVideo() {
@@ -346,16 +393,28 @@ void ofApp::loadMask(std::string fileName) {
 		mask.clear();
 		mask.load("images/masks/" + fileName);
 		mask.setImageType(OF_IMAGE_COLOR_ALPHA);
-		//maskPixels = mask.getPixels();
+
 		mask.getPixels().setChannel(3, mask.getPixels().getChannel(0));
-		/*int bpp = imagePixels.getBytesPerPixel();
-		int size = mask.getWidth() * mask.getHeight();
-		for (int i = 0; i < size; i++) {
-			int actualI = i * bpp;
-			maskPixels[actualI + 3] = maskPixels[actualI + 0] == 0 ? 0 : 120;
-		}*/
 		mask.update();
 		maskPixels = mask.getPixels();
+		paddingAddedToMask = false;
+
+		maskCopyPixels.clear();
+		maskCopyPixels.allocate(unrotatedWidth, unrotatedHeight, OF_IMAGE_COLOR_ALPHA);
+		maskCopyPixels.setColor(ofColor(0, 0, 0, 0));
+		maskPixels.pasteInto(maskCopyPixels, 0, 0);
+		maskPixels.clear();
+		maskPixels.allocate(unrotatedWidth, unrotatedHeight, OF_IMAGE_COLOR_ALPHA);
+		maskCopyPixels.pasteInto(maskPixels, 0, 0);
+		mask.update();
+		maskPixels = mask.getPixels();
+		maskCurrentAngle = 0;
+
+		if (currentImageAngle != 0) {
+			rotateMask(currentImageAngle, paddingAddedToMask);
+			paddingAddedToMask = true;
+			maskCurrentAngle = currentImageAngle;
+		}
 	}
 }
 
@@ -398,6 +457,19 @@ void ofApp::loadImage(std::string fileName) {
 		currentMode = Mode::None;
 		return;
 	}
+	if (mask.isAllocated()) {
+		maskCopyPixels.clear();
+		maskCopyPixels.allocate(unrotatedWidth, unrotatedHeight, OF_IMAGE_COLOR_ALPHA);
+		maskCopyPixels.setColor(ofColor(0, 0, 0, 0));
+		maskPixels.pasteInto(maskCopyPixels, 0, 0);
+		maskPixels.clear();
+		maskPixels.allocate(unrotatedWidth, unrotatedHeight, OF_IMAGE_COLOR_ALPHA);
+		maskCopyPixels.pasteInto(maskPixels, 0, 0);
+		mask.update();
+		maskPixels = mask.getPixels();
+		maskCurrentAngle = 0;
+		paddingAddedToMask = false;
+	}
 	currentFileName = fileName;
 	int wid = image.getWidth();
 	int hei = image.getHeight();
@@ -429,9 +501,17 @@ void ofApp::start() {
 		if (angle != currentImageAngle) {
 			rotateImage(angle - currentImageAngle, paddingAddedToImage);
 			paddingAddedToImage = true;
-		}
+			currentImageAngle = angle;
 
-		currentImageAngle = angle;
+			if (useMask && mask.isAllocated()) {
+				rotateMask(currentImageAngle - maskCurrentAngle, paddingAddedToMask);
+				paddingAddedToMask = true;
+				maskCurrentAngle = angle;
+			}
+		}
+		
+		
+
 	}
 	else {
 		videoWriter.release();
