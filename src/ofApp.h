@@ -69,12 +69,13 @@ class ofApp : public ofBaseApp{
 		int unrotatedHeight;
 
 		ofImage mask;
+		ofImage maskCopy;
 		bool useMask = false;
 		bool drawMask = false;
 
-		//ofxCvColorImage cvImage;
 		ofPixels imagePixels;
 		ofPixels maskPixels;
+		ofPixels maskCopyPixels;
 
 		ofxPanel gui;
 		ofxPanel maskPanel;

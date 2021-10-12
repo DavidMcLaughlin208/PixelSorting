@@ -17,7 +17,7 @@ struct SaturationComparator {
 	bool operator() (ofColor i, ofColor j) { return (i.getSaturation() < j.getSaturation()); }
 } saturationComparator;
 
-void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pixelsRef, ofApp::SortParameter sortParameter, float threshold, float upperThreshold) {
+void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pixelsRef, ofPixels& maskPixelsRef, ofApp::SortParameter sortParameter, float threshold, float upperThreshold, bool useMask) {
 	int start = startIndex;
 	int end = (start + 1) * imageWidth;
 	int columnsOrRows = imageHeight;
@@ -50,8 +50,22 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 				break;
 
 		}
+		bool maskApproved = false;
+		if (useMask) {
+			int y = int((double)i / (double) pixelsRef.getWidth());
+			int x = i - (double)y * pixelsRef.getWidth();
+			if (x < maskPixelsRef.getWidth() && y < maskPixelsRef.getHeight()) {
+				int alphaValue = maskPixelsRef.getColor(x, y).a;
+				if (alphaValue > 0) {
+					maskApproved = true;
+				}
+				else {
+					maskApproved = false;
+				}
+			}
+		}
 
-		if (color.a != 0 && (value >= threshold && value <= upperThreshold)) {
+		if (maskApproved && color.a != 0 && (value >= threshold && value <= upperThreshold)) {
 			if (startOfInterval == -1) {
 				startOfInterval = i;
 				continue;
@@ -144,7 +158,7 @@ void ofApp::update() {
 	if (started) {
 		vector<std::thread> threadList;
 		for (int i = 0; i < threadCount; i++) {
-			threadList.push_back(std::thread(pixelSortRow, sortingIndex, image.getWidth(), image.getHeight(), std::ref(imagePixels), currentlySelectedThresholdVariable, threshold, upperThreshold));
+			threadList.push_back(std::thread(pixelSortRow, sortingIndex, image.getWidth(), image.getHeight(), std::ref(imagePixels), std::ref(maskPixels), currentlySelectedThresholdVariable, threshold, upperThreshold, useMask));
 			sortingIndex += 1;
 
 			if (sortingIndex >= image.getHeight() - 1) {
@@ -249,6 +263,9 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	}
 	image.setFromPixels(imagePixels);
 	imagePixels = image.getPixels();
+
+	/*maskCopyPixels.clear();
+	maskCopyPixels.allocate(unrotatedWidth, unrotatedHeight, OF_IMAGE_COLOR_ALPHA);*/
 }
 
 void ofApp::saveFrameToVideo() {
@@ -329,7 +346,7 @@ void ofApp::loadMask(std::string fileName) {
 		mask.clear();
 		mask.load("images/masks/" + fileName);
 		mask.setImageType(OF_IMAGE_COLOR_ALPHA);
-		maskPixels = mask.getPixels();
+		//maskPixels = mask.getPixels();
 		mask.getPixels().setChannel(3, mask.getPixels().getChannel(0));
 		/*int bpp = imagePixels.getBytesPerPixel();
 		int size = mask.getWidth() * mask.getHeight();
@@ -338,6 +355,7 @@ void ofApp::loadMask(std::string fileName) {
 			maskPixels[actualI + 3] = maskPixels[actualI + 0] == 0 ? 0 : 120;
 		}*/
 		mask.update();
+		maskPixels = mask.getPixels();
 	}
 }
 
