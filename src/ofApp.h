@@ -31,10 +31,11 @@ class ofApp : public ofBaseApp{
 		void convertVecToCharPixels(vector<unsigned char> &charVec, glm::vec3* vecPointer, int bytesPerPixel, int pixelsBufferSize);
 		void draw();
 		
+		bool clickOnMaskImageButton(const void* sender);
 		void saveFrameToVideo();
 		void start();
 		void selectParameterRadioButton(const void* sender);
-		bool clickedOnLabel(const void* sender);
+		bool clickedOnImageButton(const void* sender);
 
 		void loadMask(std::string fileName);
 		void loadImage(std::string fileName);
@@ -69,17 +70,22 @@ class ofApp : public ofBaseApp{
 
 		ofImage mask;
 		bool useMask = false;
+		bool drawMask = false;
 
 		//ofxCvColorImage cvImage;
-		ofPixels pixels;
+		ofPixels imagePixels;
+		ofPixels maskPixels;
 
 		ofxPanel gui;
+		ofxPanel maskPanel;
 		int guiWidth = 200;
 		ofxFloatSlider thresholdSlider;
 		ofxFloatSlider upperThresholdSlider;
 		ofxIntSlider angleSlider;
 		ofxToggle maskToggle;
+		ofxToggle maskDrawToggle;
 		vector<ofxButton*> buttons;
+		vector<ofxButton*> maskFileButtons;
 		ofxButton sortButton;
 		ofxButton saveButton;
 		char pixelSwapBuffer[4];

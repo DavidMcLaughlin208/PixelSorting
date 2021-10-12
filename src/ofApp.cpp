@@ -116,6 +116,7 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 
 //--------------------------------------------------------------
 void ofApp::setup() {
+	ofEnableAlphaBlending();
 	setupGui();
 
 	videoExtensions.insert(".mp4");
@@ -138,10 +139,12 @@ void ofApp::update() {
 	upperThreshold = upperThresholdSlider;
 	angle = angleSlider;
 	threadCount = threadCountSlider;
+	drawMask = maskDrawToggle;
+	useMask = maskToggle;
 	if (started) {
 		vector<std::thread> threadList;
 		for (int i = 0; i < threadCount; i++) {
-			threadList.push_back(std::thread(pixelSortRow, sortingIndex, image.getWidth(), image.getHeight(), std::ref(pixels), currentlySelectedThresholdVariable, threshold, upperThreshold));
+			threadList.push_back(std::thread(pixelSortRow, sortingIndex, image.getWidth(), image.getHeight(), std::ref(imagePixels), currentlySelectedThresholdVariable, threshold, upperThreshold));
 			sortingIndex += 1;
 
 			if (sortingIndex >= image.getHeight() - 1) {
@@ -157,7 +160,7 @@ void ofApp::update() {
 		for (int i = 0; i < threadList.size(); i++) {
 			threadList[i].join();
 		}
-		image.setFromPixels(pixels);
+		image.setFromPixels(imagePixels);
 
 
 
@@ -166,7 +169,7 @@ void ofApp::update() {
 			if (currentMode == Mode::Image) {
 				started = false;
 				
-				image.setFromPixels(pixels);
+				image.setFromPixels(imagePixels);
 				//currentImageAngle = 0;
 			}
 			else if (currentMode == Mode::Video) {
@@ -179,9 +182,9 @@ void ofApp::update() {
 				}
 				else {
 					videoPlayer.nextFrame();
-					pixels = videoPlayer.getPixels();
+					imagePixels = videoPlayer.getPixels();
 					image.clear();
-					image.setFromPixels(pixels);
+					image.setFromPixels(imagePixels);
 					std::cout << "Starting frame " << videoPlayer.getCurrentFrame() << " out of " << videoPlayer.getTotalNumFrames() << std::endl;
 					timeStart = std::chrono::high_resolution_clock::now();
 				}
@@ -198,7 +201,7 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 		return;
 	}
 	int size = image.getWidth() * image.getHeight();
-	int bpp = pixels.getBytesPerPixel();
+	int bpp = imagePixels.getBytesPerPixel();
 	cv::Mat src;
 	src = cv::Mat_<cv::Vec4b>(image.getHeight(), image.getWidth());
 	for (int i = 0; i < size; i++) {
@@ -206,10 +209,10 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 		int y = int((double)i / (double)image.getWidth());
 		int x = i - (double)y * image.getWidth();
 		// The mismatch of indices here is because Mat is in BGRA and pixels is in RGBA format
-		src.at<cv::Vec4b>(y, x)[0] = pixels[actualI + 2];
-		src.at<cv::Vec4b>(y, x)[1] = pixels[actualI + 1];
-		src.at<cv::Vec4b>(y, x)[2] = pixels[actualI + 0];
-		src.at<cv::Vec4b>(y, x)[3] = pixels[actualI + 3];
+		src.at<cv::Vec4b>(y, x)[0] = imagePixels[actualI + 2];
+		src.at<cv::Vec4b>(y, x)[1] = imagePixels[actualI + 1];
+		src.at<cv::Vec4b>(y, x)[2] = imagePixels[actualI + 0];
+		src.at<cv::Vec4b>(y, x)[3] = imagePixels[actualI + 3];
 	}
 	
 	// get rotation matrix for rotating the image around its center in pixel coordinates
@@ -234,32 +237,32 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 
 	image.resize(dst.cols, dst.rows);
 	size = image.getWidth() * image.getHeight();
-	pixels.allocate(dst.cols, dst.rows, OF_IMAGE_COLOR_ALPHA);
+	imagePixels.allocate(dst.cols, dst.rows, OF_IMAGE_COLOR_ALPHA);
 	for (int i = 0; i < size; i++) {
 		int actualI = i * bpp;
 		int y = int((double)i / (double)image.getWidth());
 		int x = i - (double) y * image.getWidth();
-		pixels[actualI + 2] = dst.at<cv::Vec4b>(y, x)[0];
-		pixels[actualI + 1] = dst.at<cv::Vec4b>(y, x)[1];
-		pixels[actualI + 0] = dst.at<cv::Vec4b>(y, x)[2];
-		pixels[actualI + 3] = dst.at<cv::Vec4b>(y, x)[3];
+		imagePixels[actualI + 2] = dst.at<cv::Vec4b>(y, x)[0];
+		imagePixels[actualI + 1] = dst.at<cv::Vec4b>(y, x)[1];
+		imagePixels[actualI + 0] = dst.at<cv::Vec4b>(y, x)[2];
+		imagePixels[actualI + 3] = dst.at<cv::Vec4b>(y, x)[3];
 	}
-	image.setFromPixels(pixels);
-	pixels = image.getPixels();
+	image.setFromPixels(imagePixels);
+	imagePixels = image.getPixels();
 }
 
 void ofApp::saveFrameToVideo() {
 	int size = image.getWidth() * image.getHeight();
-	int bpp = pixels.getBytesPerPixel();
+	int bpp = imagePixels.getBytesPerPixel();
 	cv::Mat mat;
 	mat = cv::Mat_<cv::Vec3b>(image.getHeight(), image.getWidth());
 	for (int i = 0; i < size; i++) {
 		int actualI = i * bpp;
 		int y = int((float)i / (float)image.getWidth());
 		int x = i - y * image.getWidth();
-		mat.at<cv::Vec3b>(y, x)[0] = pixels[actualI + 2];
-		mat.at<cv::Vec3b>(y, x)[1] = pixels[actualI + 1];
-		mat.at<cv::Vec3b>(y, x)[2] = pixels[actualI + 0];
+		mat.at<cv::Vec3b>(y, x)[0] = imagePixels[actualI + 2];
+		mat.at<cv::Vec3b>(y, x)[1] = imagePixels[actualI + 1];
+		mat.at<cv::Vec3b>(y, x)[2] = imagePixels[actualI + 0];
 	}
 	videoWriter.write(mat);
 }
@@ -296,6 +299,7 @@ void ofApp::draw() {
 				hei = 768;
 			}
 		}*/
+		ofSetColor(255, 255, 255, 255);
 		ofPushMatrix();
 		ofTranslate(unrotatedWidth / 2, unrotatedHeight / 2 );
 		ofRotate(currentImageAngle, 0, 0, 1);
@@ -304,12 +308,37 @@ void ofApp::draw() {
 		image.draw(0,0, wid , hei);
 		ofPopMatrix();
 		ofPopMatrix();
+
+
+		
+	}
+	if (mask.isAllocated() && drawMask) {
+		ofPushMatrix();
+		ofSetColor(255, 255, 255, 100);
+		mask.draw(0, 0);
+		ofPopMatrix();
 	}
 	gui.draw();
+	maskPanel.draw();
 }
 
 void ofApp::loadMask(std::string fileName) {
-	
+	ofFilePath filePath;
+	std::string extension = "." + filePath.getFileExt(fileName);
+	if (imageExtensions.find(extension) != imageExtensions.end()) {
+		mask.clear();
+		mask.load("images/masks/" + fileName);
+		mask.setImageType(OF_IMAGE_COLOR_ALPHA);
+		maskPixels = mask.getPixels();
+		mask.getPixels().setChannel(3, mask.getPixels().getChannel(0));
+		/*int bpp = imagePixels.getBytesPerPixel();
+		int size = mask.getWidth() * mask.getHeight();
+		for (int i = 0; i < size; i++) {
+			int actualI = i * bpp;
+			maskPixels[actualI + 3] = maskPixels[actualI + 0] == 0 ? 0 : 120;
+		}*/
+		mask.update();
+	}
 }
 
 void ofApp::loadImage(std::string fileName) {
@@ -324,7 +353,7 @@ void ofApp::loadImage(std::string fileName) {
 		currentMode = Mode::Image;
 		unrotatedWidth = image.getWidth();
 		unrotatedHeight = image.getHeight();
-		pixels = image.getPixels();
+		imagePixels = image.getPixels();
 		paddingAddedToImage = false;
 		currentImageAngle = 0;
 	}
@@ -339,8 +368,8 @@ void ofApp::loadImage(std::string fileName) {
 		videoPlayer.firstFrame();
 		videoPlayer.play();
 		videoPlayer.setPaused(true);
-		pixels = videoPlayer.getPixels();
-		image.setFromPixels(pixels);
+		imagePixels = videoPlayer.getPixels();
+		image.setFromPixels(imagePixels);
 
 		float fps = videoPlayer.getTotalNumFrames() / videoPlayer.getDuration();
 		videoWriter = cv::VideoWriter("data/images/effect.mp4", cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(image.getWidth(), image.getHeight()), true);
@@ -397,7 +426,7 @@ void ofApp::selectParameterRadioButton(const void* sender) {
 	selectedThresholdVariable = (string)"Sorting by: " + name;
 }
 
-bool ofApp::clickedOnLabel(const void* sender) {
+bool ofApp::clickedOnImageButton(const void* sender) {
 	ofParameter<bool>* button = (ofParameter<bool>*)sender;
 	loadImage(button->getName());
 	return true;
@@ -434,7 +463,20 @@ void ofApp::setupGui() {
 		ofxButton* button = new ofxButton();
 		gui.add(button->setup(directory.getName(i)));
 		buttons.push_back(button);
-		button->addListener(this, &ofApp::clickedOnLabel);
+		button->addListener(this, &ofApp::clickedOnImageButton);
+	}
+
+	maskPanel.setup();
+	maskPanel.setPosition(ofGetWidth() - guiWidth * 2, 10);
+	maskPanel.add(maskToggle.setup(false));
+	maskPanel.add(maskDrawToggle.setup(false));
+	directory.open("images/masks");
+	directory.listDir();
+	for (int i = 0; i < directory.size(); i++) {
+		ofxButton* button = new ofxButton();
+		maskPanel.add(button->setup(directory.getName(i)));
+		maskFileButtons.push_back(button);
+		button->addListener(this, &ofApp::clickOnMaskImageButton);
 	}
 }
 
@@ -445,22 +487,28 @@ void ofApp::saveCurrentImage() {
 		std::string extension = "." + filePath.getFileExt(currentFileName);
 		std::string fullName = fileName + "1" + extension;
 		ofPixels copy;
-		copy.allocate(pixels.getWidth(), pixels.getHeight(), pixels.getImageType());
-		pixels.pasteInto(copy, 0, 0);
+		copy.allocate(imagePixels.getWidth(), imagePixels.getHeight(), imagePixels.getImageType());
+		imagePixels.pasteInto(copy, 0, 0);
 		rotateImage(-currentImageAngle, paddingAddedToImage);
 		int originalImageX = image.getWidth() / 2 - unrotatedWidth / 2;
 		int originalImageY = image.getHeight() / 2 - unrotatedHeight / 2;
-		pixels.crop(originalImageX + 1, originalImageY + 1, unrotatedWidth, unrotatedHeight);
-		image.resize(pixels.getWidth(), pixels.getHeight());
-		image.setFromPixels(pixels);
+		imagePixels.crop(originalImageX + 1, originalImageY + 1, unrotatedWidth, unrotatedHeight);
+		image.resize(imagePixels.getWidth(), imagePixels.getHeight());
+		image.setFromPixels(imagePixels);
 		image.save("images/" + fullName);
 		currentFileName = fullName;
 		//pixels.allocate(copy.getWidth(), copy.getHeight(), OF_IMAGE_COLOR_ALPHA);
 		//copy.pasteInto(pixels, 0, 0);
-		pixels = copy;
-		image.setFromPixels(pixels);
+		imagePixels = copy;
+		image.setFromPixels(imagePixels);
 	}
 	
+}
+
+bool ofApp::clickOnMaskImageButton(const void* sender) {
+	ofParameter<bool>* button = (ofParameter<bool>*)sender;
+	loadMask(button->getName());
+	return true;
 }
 
 //--------------------------------------------------------------
