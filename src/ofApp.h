@@ -25,18 +25,32 @@ class ofApp : public ofBaseApp{
 			Saturation
 		};
 
-		void rotateImage(int angle, bool paddingAddedToImage);
-		void rotateMask(int angle, bool paddingAddedToMask);
+		enum class MouseMode {
+			Default,
+			MaskDraw
+		};
+
+		enum class BrushMode {
+			Circle,
+			Square
+		};
+
+
 		void setup();
 		void update();
-		void convertVecToCharPixels(vector<unsigned char> &charVec, glm::vec3* vecPointer, int bytesPerPixel, int pixelsBufferSize);
 		void draw();
 		
-		bool clickOnMaskImageButton(const void* sender);
+		void rotateImage(int angle, bool paddingAddedToImage);
+		void convertVecToCharPixels(vector<unsigned char>& charVec, glm::vec3* vecPointer, int bytesPerPixel, int pixelsBufferSize);
+		
 		void saveFrameToVideo();
 		void start();
 		void selectParameterRadioButton(const void* sender);
 		bool clickedOnImageButton(const void* sender);
+		bool maskToolToggleClicked();
+		bool clickOnMaskImageButton(const void* sender);
+		void applyBrushStroke(int x, int y, int size, ofApp::BrushMode mode, int value);
+		bool withinMaskBounds(int x, int y);
 
 		void loadMask(std::string fileName);
 		void loadImage(std::string fileName);
@@ -86,6 +100,7 @@ class ofApp : public ofBaseApp{
 		ofxIntSlider angleSlider;
 		ofxToggle maskToggle;
 		ofxFloatSlider maskOpacitySlider;
+		ofxButton maskToolToggle;
 		vector<ofxButton*> buttons;
 		vector<ofxButton*> maskFileButtons;
 		ofxButton sortButton;
@@ -116,6 +131,10 @@ class ofApp : public ofBaseApp{
 		std::set<std::string> videoExtensions;
 		std::set<std::string> imageExtensions;
 
+		// Brush variables
+		int brushSize = 5;
+		BrushMode currentBrushMode = BrushMode::Circle;
+
 
 		// Threshold parameter radio buttons
 		ofxButton brightnessRadio;
@@ -126,6 +145,7 @@ class ofApp : public ofBaseApp{
 		ofxLabel selectedThresholdVariable;
 
 		Mode currentMode = Mode::None;
+		MouseMode currentMouseMode = MouseMode::Default;
 		std::map<std::string, SortParameter> sortParameterTable;
 
 

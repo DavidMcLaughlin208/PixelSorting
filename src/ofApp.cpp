@@ -496,6 +496,8 @@ void ofApp::setupGui() {
 	maskPanel.setPosition(ofGetWidth() - guiWidth * 2 - 10, 10);
 	maskPanel.add(maskToggle.setup(false));
 	maskPanel.add(maskOpacitySlider.setup("Mask Opacity", 0.4, 0.0, 1.0));
+	maskPanel.add(maskToolToggle.setup("Mask Drawing Tool"));
+	maskToolToggle.addListener(this, &ofApp::maskToolToggleClicked);
 	directory.open("images/masks");
 	directory.listDir();
 	for (int i = 0; i < directory.size(); i++) {
@@ -537,6 +539,40 @@ bool ofApp::clickOnMaskImageButton(const void* sender) {
 	return true;
 }
 
+bool ofApp::maskToolToggleClicked() {
+	if (currentMouseMode != MouseMode::MaskDraw) {
+		currentMouseMode = MouseMode::MaskDraw;
+	}
+	else {
+		currentMouseMode = MouseMode::Default;
+	}
+	return true;
+}
+
+void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMode mode, int value) {
+	int topLeftX = centerX - size;
+	int topLeftY = centerY - size;
+	for (int y = 0; y < size * 2; y++) {
+		for (int x = 0; x < size * 2; x++) {
+			int modX = topLeftX + x;
+			int modY = topLeftY + y;
+			if (modX >= 0 && modX < mask.getWidth() && modY >= 0 && modY < mask.getHeight()) {
+				if (mode == BrushMode::Circle) {
+					float distance = sqrt(pow(modX - centerX, 2) + pow(modY - centerY, 2));
+					if (distance > (float) size) continue;
+				}
+				maskPixels.setColor(modX, modY, ofColor(value, value, value, value));
+			}
+		}
+	}
+	mask.setFromPixels(maskPixels);
+	maskPixels = mask.getPixels();
+}
+
+bool ofApp::withinMaskBounds(int x, int y) {
+	return x >= 0 && x < mask.getWidth() && y >= 0 && y < mask.getHeight();
+}
+
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
 
@@ -554,12 +590,16 @@ void ofApp::mouseMoved(int x, int y ){
 
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button){
-
+	if (currentMouseMode == MouseMode::MaskDraw && withinMaskBounds(x, y)) {
+		applyBrushStroke(x, y, brushSize, currentBrushMode, 255 * (button / 2));
+	}
 }
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
-
+	if (currentMouseMode == MouseMode::MaskDraw && withinMaskBounds(x, y)) {
+		applyBrushStroke(x, y, brushSize, currentBrushMode, 255 * (button / 2));
+	}
 }
 
 //--------------------------------------------------------------
