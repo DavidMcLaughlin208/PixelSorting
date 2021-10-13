@@ -73,7 +73,7 @@ class ofApp : public ofBaseApp{
 
 		ofImage mask;
 		bool useMask = false;
-		bool drawMask = false;
+		int maskOpacity = 110;
 
 		ofPixels imagePixels;
 		ofPixels maskPixels;
@@ -85,7 +85,7 @@ class ofApp : public ofBaseApp{
 		ofxFloatSlider upperThresholdSlider;
 		ofxIntSlider angleSlider;
 		ofxToggle maskToggle;
-		ofxToggle maskDrawToggle;
+		ofxFloatSlider maskOpacitySlider;
 		vector<ofxButton*> buttons;
 		vector<ofxButton*> maskFileButtons;
 		ofxButton sortButton;

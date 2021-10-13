@@ -168,7 +168,7 @@ void ofApp::update() {
 	upperThreshold = upperThresholdSlider;
 	angle = angleSlider;
 	threadCount = threadCountSlider;
-	drawMask = maskDrawToggle;
+	maskOpacity = maskOpacitySlider * 255;
 	useMask = maskToggle;
 	if (started) {
 		vector<std::thread> threadList;
@@ -343,9 +343,9 @@ void ofApp::draw() {
 
 		
 	}
-	if (mask.isAllocated() && drawMask) {
+	if (mask.isAllocated()) {
 		ofPushMatrix();
-		ofSetColor(255, 255, 255, 100);
+		ofSetColor(255, 255, 255, maskOpacity);
 		mask.draw(0, 0);
 		ofPopMatrix();
 	}
@@ -495,7 +495,7 @@ void ofApp::setupGui() {
 	maskPanel.setup();
 	maskPanel.setPosition(ofGetWidth() - guiWidth * 2 - 10, 10);
 	maskPanel.add(maskToggle.setup(false));
-	maskPanel.add(maskDrawToggle.setup(false));
+	maskPanel.add(maskOpacitySlider.setup("Mask Opacity", 0.4, 0.0, 1.0));
 	directory.open("images/masks");
 	directory.listDir();
 	for (int i = 0; i < directory.size(); i++) {
