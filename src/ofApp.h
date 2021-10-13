@@ -68,6 +68,8 @@ class ofApp : public ofBaseApp{
 		ofImage image;
 		int unrotatedWidth;
 		int unrotatedHeight;
+		int xPadding;
+		int yPadding;
 
 		ofImage mask;
 		ofImage maskCopy;

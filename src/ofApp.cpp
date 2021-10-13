@@ -17,7 +17,7 @@ struct SaturationComparator {
 	bool operator() (ofColor i, ofColor j) { return (i.getSaturation() < j.getSaturation()); }
 } saturationComparator;
 
-void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pixelsRef, ofPixels& maskPixelsRef, ofApp::SortParameter sortParameter, float threshold, float upperThreshold, bool useMask) {
+void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pixelsRef, ofPixels& maskPixelsRef, ofApp::SortParameter sortParameter, float threshold, float upperThreshold, bool useMask, float currentImageAngle, int xPadding, int yPadding) {
 	int start = startIndex;
 	int end = (start + 1) * imageWidth;
 	int columnsOrRows = imageHeight;
@@ -50,12 +50,33 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 				break;
 
 		}
-		bool maskApproved = true;
+		bool maskApproved = !useMask;
 		if (useMask) {
-			int y = int((double)i / (double) pixelsRef.getWidth());
+			int y = int((double)i / (double)pixelsRef.getWidth());
 			int x = i - (double)y * pixelsRef.getWidth();
-			if (x < maskPixelsRef.getWidth() && y < maskPixelsRef.getHeight()) {
-				maskApproved = maskPixelsRef.getColor(x, y).a > 0;
+
+			float rotateSine = sin(currentImageAngle * (PI / 180.0));
+			float rotateCosine = cos(currentImageAngle * (PI / 180.0));
+
+			int centerX = imageWidth / 2;
+			int centerY = imageHeight / 2;
+
+			int translatedX = x - centerX;
+			int translatedY = y - centerY;
+
+			int rotatedX = translatedX * rotateCosine - translatedY * rotateSine;
+			int rotatedY = translatedX * rotateSine + translatedY * rotateCosine;
+
+			int untranslatedX = rotatedX + centerX;
+			int untranslatedY = rotatedY + centerY;
+
+			int unpaddedX = untranslatedX - xPadding;
+			int unpaddedY = untranslatedY - yPadding;
+
+
+			
+			if (unpaddedX < maskPixelsRef.getWidth() && unpaddedX >= 0 && unpaddedY < maskPixelsRef.getHeight() && unpaddedY >= 0) {
+				maskApproved = maskPixelsRef.getColor(unpaddedX, unpaddedY).a > 0;
 			}
 		}
 
@@ -152,7 +173,7 @@ void ofApp::update() {
 	if (started) {
 		vector<std::thread> threadList;
 		for (int i = 0; i < threadCount; i++) {
-			threadList.push_back(std::thread(pixelSortRow, sortingIndex, image.getWidth(), image.getHeight(), std::ref(imagePixels), std::ref(maskCopyPixels), currentlySelectedThresholdVariable, threshold, upperThreshold, useMask));
+			threadList.push_back(std::thread(pixelSortRow, sortingIndex, image.getWidth(), image.getHeight(), std::ref(imagePixels), std::ref(maskPixels), currentlySelectedThresholdVariable, threshold, upperThreshold, useMask, currentImageAngle, xPadding, yPadding));
 			sortingIndex += 1;
 
 			if (sortingIndex >= image.getHeight() - 1) {
@@ -234,6 +255,8 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	else {
 		int diagonal = (int)sqrt(src.cols * src.cols + src.rows * src.rows);
 		boxSize = cv::Size(diagonal, diagonal);
+		this->xPadding = (boxSize.width - src.size().width) / 2;
+		this->yPadding = (boxSize.height - src.size().height) / 2;
 	}
 	// adjust transformation matrix
 	rot.at<double>(0, 2) += boxSize.width / 2.0 - src.cols / 2.0;
@@ -503,15 +526,12 @@ void ofApp::start() {
 			paddingAddedToImage = true;
 			currentImageAngle = angle;
 
-			if (useMask && mask.isAllocated()) {
+			/*if (useMask && mask.isAllocated()) {
 				rotateMask(currentImageAngle - maskCurrentAngle, paddingAddedToMask);
 				paddingAddedToMask = true;
 				maskCurrentAngle = angle;
-			}
-		}
-		
-		
-
+			}*/
+		}	
 	}
 	else {
 		videoWriter.release();
@@ -532,6 +552,7 @@ bool ofApp::clickedOnImageButton(const void* sender) {
 
 void ofApp::resetGuiPosition() {
 	gui.setPosition(ofGetWidth() - guiWidth, 10);
+	maskPanel.setPosition(ofGetWidth() - guiWidth * 2 - 10, 10);
 }
 
 void ofApp::setupGui() {
@@ -565,7 +586,7 @@ void ofApp::setupGui() {
 	}
 
 	maskPanel.setup();
-	maskPanel.setPosition(ofGetWidth() - guiWidth * 2, 10);
+	maskPanel.setPosition(ofGetWidth() - guiWidth * 2 - 10, 10);
 	maskPanel.add(maskToggle.setup(false));
 	maskPanel.add(maskDrawToggle.setup(false));
 	directory.open("images/masks");
