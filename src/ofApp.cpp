@@ -169,6 +169,7 @@ void ofApp::update() {
 	angle = angleSlider;
 	threadCount = threadCountSlider;
 	maskOpacity = maskOpacitySlider * 255;
+	brushSize = maskBrushSizeSlider;
 	useMask = maskToggle;
 	if (started) {
 		vector<std::thread> threadList;
@@ -298,38 +299,12 @@ void ofApp::saveFrameToVideo() {
 	videoWriter.write(mat);
 }
 
-void ofApp::convertVecToCharPixels(vector<unsigned char> &charVec, glm::vec3* vecPointer, int bytesPerPixel, int size) {
-	charVec.resize(size * bytesPerPixel);
-	for (int i = 0; i < size; i++) {
-		glm::vec3 vecPixel = vecPointer[i];
-		int scaledI = charVec.size() - bytesPerPixel - (i * bytesPerPixel);
-		charVec[scaledI] = vecPixel.r * 255.0f;
-		charVec[scaledI + 1] = vecPixel.g * 255.0f;
-		charVec[scaledI + 2] = vecPixel.b * 255.0f;
-		if (bytesPerPixel == 4) {
-			charVec[scaledI + 3] = 255;
-		}
-	}
-}
-
 //--------------------------------------------------------------
 void ofApp::draw() {
 	if (image.isAllocated()) {
 
 		int wid = image.getWidth();
 		int hei = image.getHeight();
-		/*if (image.getWidth() > 1280 || image.getHeight() > 768) {
-			int heightRat = image.getHeight() / 768.0f;
-			int widthRat = image.getWidth() / 1280.0f;
-			if (widthRat > heightRat) {
-				wid = 1280;
-				hei = image.getHeight() / heightRat;
-			}
-			else {
-				wid = image.getWidth() / widthRat;
-				hei = 768;
-			}
-		}*/
 		ofSetColor(255, 255, 255, 255);
 		ofPushMatrix();
 		ofTranslate(unrotatedWidth / 2, unrotatedHeight / 2 );
@@ -351,6 +326,19 @@ void ofApp::draw() {
 	}
 	gui.draw();
 	maskPanel.draw();
+	if (currentMouseMode == MouseMode::MaskDraw && withinMaskBounds(mouseX, mouseY)) {
+		switch (currentBrushMode) {
+		case (BrushMode::Circle):
+			ofNoFill();
+			ofSetColor(255, 0, 0, 255);
+			ofCircle(glm::vec3(mouseX, mouseY, 0), brushSize);
+			break;
+		case (BrushMode::Square):
+			ofNoFill();
+			ofSetColor(255, 0, 0, 255);
+			ofRect(mouseX - brushSize, mouseY - brushSize, brushSize * 2, brushSize * 2);
+		}
+	}
 }
 
 void ofApp::loadMask(std::string fileName) {
@@ -497,6 +485,9 @@ void ofApp::setupGui() {
 	maskPanel.add(maskToggle.setup(false));
 	maskPanel.add(maskOpacitySlider.setup("Mask Opacity", 0.4, 0.0, 1.0));
 	maskPanel.add(maskToolToggle.setup("Mask Drawing Tool"));
+	maskPanel.add(brushModeCycler.setup("Cycle Brush Shape"));
+	maskPanel.add(maskBrushSizeSlider.setup("Brush Size", 10, 1, 100));
+	brushModeCycler.addListener(this, &ofApp::cycleBrushMode);
 	maskToolToggle.addListener(this, &ofApp::maskToolToggleClicked);
 	directory.open("images/masks");
 	directory.listDir();
@@ -520,13 +511,11 @@ void ofApp::saveCurrentImage() {
 		rotateImage(-currentImageAngle, paddingAddedToImage);
 		int originalImageX = image.getWidth() / 2 - unrotatedWidth / 2;
 		int originalImageY = image.getHeight() / 2 - unrotatedHeight / 2;
-		imagePixels.crop(originalImageX + 1, originalImageY + 1, unrotatedWidth, unrotatedHeight);
+		imagePixels.crop(originalImageX, originalImageY, unrotatedWidth, unrotatedHeight);
 		image.resize(imagePixels.getWidth(), imagePixels.getHeight());
 		image.setFromPixels(imagePixels);
 		image.save("images/" + fullName);
 		currentFileName = fullName;
-		//pixels.allocate(copy.getWidth(), copy.getHeight(), OF_IMAGE_COLOR_ALPHA);
-		//copy.pasteInto(pixels, 0, 0);
 		imagePixels = copy;
 		image.setFromPixels(imagePixels);
 	}
@@ -561,7 +550,9 @@ void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMod
 					float distance = sqrt(pow(modX - centerX, 2) + pow(modY - centerY, 2));
 					if (distance > (float) size) continue;
 				}
-				maskPixels.setColor(modX, modY, ofColor(value, value, value, value));
+				if (maskPixels.getColor(modX, modY).a != value) {
+					maskPixels.setColor(modX, modY, ofColor(value, value, value, value));
+				}
 			}
 		}
 	}
@@ -571,6 +562,17 @@ void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMod
 
 bool ofApp::withinMaskBounds(int x, int y) {
 	return x >= 0 && x < mask.getWidth() && y >= 0 && y < mask.getHeight();
+}
+
+
+bool ofApp::cycleBrushMode() {
+	if (currentBrushMode == BrushMode::Circle) {
+		currentBrushMode = BrushMode::Square;
+	}
+	else if (currentBrushMode == BrushMode::Square) {
+		currentBrushMode = BrushMode::Circle;
+	}
+	return true;
 }
 
 //--------------------------------------------------------------
@@ -600,6 +602,16 @@ void ofApp::mousePressed(int x, int y, int button){
 	if (currentMouseMode == MouseMode::MaskDraw && withinMaskBounds(x, y)) {
 		applyBrushStroke(x, y, brushSize, currentBrushMode, 255 * (button / 2));
 	}
+}
+
+void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY) {
+	if (scrollY > 0) {
+		brushSize = min(100, brushSize + 1);
+	}
+	else {
+		brushSize = max(0, brushSize - 1);
+	}
+	maskBrushSizeSlider = brushSize;
 }
 
 //--------------------------------------------------------------

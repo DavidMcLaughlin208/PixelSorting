@@ -3,6 +3,7 @@
 #include "ofMain.h"
 #include "ofxGui.h"
 #include "ofxOpenCv.h"
+#include "ofxDatGui.h"
 #include <vector>
 #include <string>
 #include <chrono>
@@ -51,6 +52,8 @@ class ofApp : public ofBaseApp{
 		bool clickOnMaskImageButton(const void* sender);
 		void applyBrushStroke(int x, int y, int size, ofApp::BrushMode mode, int value);
 		bool withinMaskBounds(int x, int y);
+		bool cycleBrushMode();
+		virtual void mouseScrolled(int x, int y, float scrollX, float scrollY);
 
 		void loadMask(std::string fileName);
 		void loadImage(std::string fileName);
@@ -100,6 +103,7 @@ class ofApp : public ofBaseApp{
 		ofxIntSlider angleSlider;
 		ofxToggle maskToggle;
 		ofxFloatSlider maskOpacitySlider;
+		
 		ofxButton maskToolToggle;
 		vector<ofxButton*> buttons;
 		vector<ofxButton*> maskFileButtons;
@@ -134,6 +138,8 @@ class ofApp : public ofBaseApp{
 		// Brush variables
 		int brushSize = 5;
 		BrushMode currentBrushMode = BrushMode::Circle;
+		ofxIntSlider maskBrushSizeSlider;
+		ofxButton brushModeCycler;
 
 
 		// Threshold parameter radio buttons
