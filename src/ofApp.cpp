@@ -204,7 +204,7 @@ void ofApp::update() {
 			}
 			else if (currentMode == Mode::Video) {
 				saveFrameToVideo();
-				if (videoPlayer.getCurrentFrame() >= videoPlayer.getTotalNumFrames() - 1) {
+				if (videoPlayer.getCurrentFrame() > videoPlayer.getTotalNumFrames() - 1) {
 					videoPlayer.close();
 					videoWriter.release();
 					started = false;
@@ -213,8 +213,17 @@ void ofApp::update() {
 				else {
 					videoPlayer.nextFrame();
 					imagePixels = videoPlayer.getPixels();
+					imagePixels.setImageType(OF_IMAGE_COLOR_ALPHA);
 					image.clear();
 					image.setFromPixels(imagePixels);
+					image.setImageType(OF_IMAGE_COLOR_ALPHA);
+					image.update();
+					currentImageAngle = 0;
+					if (currentImageAngle != angle) {
+						rotateImage(angle, false);
+						paddingAddedToImage = true;
+						currentImageAngle = angle;
+					}
 					std::cout << "Starting frame " << videoPlayer.getCurrentFrame() << " out of " << videoPlayer.getTotalNumFrames() << std::endl;
 					timeStart = std::chrono::high_resolution_clock::now();
 				}
@@ -284,10 +293,21 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 }
 
 void ofApp::saveFrameToVideo() {
-	int size = image.getWidth() * image.getHeight();
+	if (currentImageAngle != 0) {
+		ofPixels copy;
+		copy.allocate(imagePixels.getWidth(), imagePixels.getHeight(), imagePixels.getImageType());
+		imagePixels.pasteInto(copy, 0, 0);
+		rotateImage(-currentImageAngle, true);
+		int originalImageX = image.getWidth() / 2 - unrotatedWidth / 2;
+		int originalImageY = image.getHeight() / 2 - unrotatedHeight / 2;
+		imagePixels.crop(originalImageX, originalImageY, unrotatedWidth, unrotatedHeight);
+		image.resize(imagePixels.getWidth(), imagePixels.getHeight());
+		image.setFromPixels(imagePixels);
+	}
+	int size = imagePixels.getWidth() * imagePixels.getHeight();
 	int bpp = imagePixels.getBytesPerPixel();
 	cv::Mat mat;
-	mat = cv::Mat_<cv::Vec3b>(image.getHeight(), image.getWidth());
+	mat = cv::Mat_<cv::Vec3b>(imagePixels.getHeight(), imagePixels.getWidth());
 	for (int i = 0; i < size; i++) {
 		int actualI = i * bpp;
 		int y = int((float)i / (float)image.getWidth());
@@ -390,7 +410,14 @@ void ofApp::loadImage(std::string fileName) {
 		videoPlayer.play();
 		videoPlayer.setPaused(true);
 		imagePixels = videoPlayer.getPixels();
+		imagePixels.setImageType(OF_IMAGE_COLOR_ALPHA);
 		image.setFromPixels(imagePixels);
+		image.setImageType(OF_IMAGE_COLOR_ALPHA);
+		image.update();
+		unrotatedWidth = image.getWidth();
+		unrotatedHeight = image.getHeight();
+		paddingAddedToImage = false;
+		currentImageAngle = 0;
 
 		float fps = videoPlayer.getTotalNumFrames() / videoPlayer.getDuration();
 		videoWriter = cv::VideoWriter("data/images/effect.mp4", cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(image.getWidth(), image.getHeight()), true);
