@@ -52,6 +52,7 @@ class ofApp : public ofBaseApp{
 		bool clickOnMaskImageButton(const void* sender);
 		void applyBrushStroke(int x, int y, int size, ofApp::BrushMode mode, int value);
 		bool withinMaskBounds(int x, int y);
+		bool withinUnrotatedImageBounds(int x, int y);
 		bool cycleBrushMode();
 		virtual void mouseScrolled(int x, int y, float scrollX, float scrollY);
 

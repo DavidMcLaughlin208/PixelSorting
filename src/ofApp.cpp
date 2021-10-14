@@ -264,7 +264,7 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	rot.at<double>(1, 2) += boxSize.height / 2.0 - src.rows / 2.0;
 
 	cv::Mat dst;
-	cv::warpAffine(src, dst, rot, boxSize);
+	cv::warpAffine(src, dst, rot, boxSize, cv::INTER_CUBIC);
 
 
 	image.resize(dst.cols, dst.rows);
@@ -302,7 +302,6 @@ void ofApp::saveFrameToVideo() {
 //--------------------------------------------------------------
 void ofApp::draw() {
 	if (image.isAllocated()) {
-
 		int wid = image.getWidth();
 		int hei = image.getHeight();
 		ofSetColor(255, 255, 255, 255);
@@ -314,9 +313,6 @@ void ofApp::draw() {
 		image.draw(0,0, wid , hei);
 		ofPopMatrix();
 		ofPopMatrix();
-
-
-		
 	}
 	if (mask.isAllocated()) {
 		ofPushMatrix();
@@ -324,9 +320,7 @@ void ofApp::draw() {
 		mask.draw(0, 0);
 		ofPopMatrix();
 	}
-	gui.draw();
-	maskPanel.draw();
-	if (currentMouseMode == MouseMode::MaskDraw && withinMaskBounds(mouseX, mouseY)) {
+	if (currentMouseMode == MouseMode::MaskDraw && withinUnrotatedImageBounds(mouseX, mouseY)) {
 		switch (currentBrushMode) {
 		case (BrushMode::Circle):
 			ofNoFill();
@@ -339,6 +333,8 @@ void ofApp::draw() {
 			ofRect(mouseX - brushSize, mouseY - brushSize, brushSize * 2, brushSize * 2);
 		}
 	}
+	gui.draw();
+	maskPanel.draw();
 }
 
 void ofApp::loadMask(std::string fileName) {
@@ -352,6 +348,17 @@ void ofApp::loadMask(std::string fileName) {
 		mask.getPixels().setChannel(3, mask.getPixels().getChannel(0));
 		mask.update();
 		maskPixels = mask.getPixels();
+		if (mask.getWidth() < unrotatedWidth || mask.getHeight() < unrotatedHeight) {
+			ofPixels copy;
+			copy.allocate(maskPixels.getWidth(), maskPixels.getHeight(), OF_IMAGE_COLOR_ALPHA);
+			maskPixels.pasteInto(copy, 0, 0);
+			mask.allocate(max((int)mask.getWidth(), unrotatedWidth), max((int)mask.getHeight(), unrotatedHeight), OF_IMAGE_COLOR_ALPHA);
+			mask.setColor(ofColor(0, 0, 0, 0));
+			maskPixels = mask.getPixels();
+			copy.pasteInto(maskPixels, 0, 0);
+			mask.setFromPixels(maskPixels);
+			maskPixels = mask.getPixels();
+		}
 	}
 }
 
@@ -394,21 +401,26 @@ void ofApp::loadImage(std::string fileName) {
 		currentMode = Mode::None;
 		return;
 	}
+	if (mask.isAllocated()) {
+		if (mask.getWidth() < unrotatedWidth || mask.getHeight() < unrotatedHeight) {
+			ofPixels copy;
+			copy.allocate(maskPixels.getWidth(), maskPixels.getHeight(), OF_IMAGE_COLOR_ALPHA);
+			maskPixels.pasteInto(copy, 0, 0);
+			mask.allocate(max((int)mask.getWidth(), unrotatedWidth), max((int)mask.getHeight(), unrotatedHeight), OF_IMAGE_COLOR_ALPHA);
+			mask.setColor(ofColor(0, 0, 0, 0));
+			maskPixels = mask.getPixels();
+			copy.pasteInto(maskPixels, 0, 0);
+			mask.setFromPixels(maskPixels);
+			maskPixels = mask.getPixels();
+		}
+	}
+	else {
+		mask.allocate(unrotatedWidth, unrotatedHeight, OF_IMAGE_COLOR_ALPHA);
+		mask.setColor(ofColor(0, 0, 0, 0));
+		mask.update();
+		maskPixels = mask.getPixels();
+	}
 	currentFileName = fileName;
-	int wid = image.getWidth();
-	int hei = image.getHeight();
-	/*if (image.getWidth() > 1280 || image.getHeight() > 768) {
-		int heightRat = image.getHeight() / 768.0f;
-		int widthRat = image.getWidth() / 1280.0f;
-		if (widthRat > heightRat) {
-			wid = 1280;
-			hei = image.getHeight() / heightRat;
-		}
-		else {
-			wid = image.getWidth() / widthRat;
-			hei = 768;
-		}
-	}*/
 	ofSetWindowShape(unrotatedWidth + guiWidth, unrotatedHeight);
 	resetGuiPosition();
 	sortingIndex = 0;
@@ -562,6 +574,10 @@ void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMod
 
 bool ofApp::withinMaskBounds(int x, int y) {
 	return x >= 0 && x < mask.getWidth() && y >= 0 && y < mask.getHeight();
+}
+
+bool ofApp::withinUnrotatedImageBounds(int x, int y) {
+	return x >= 0 && x < unrotatedWidth && y >= 0 && y < unrotatedHeight;
 }
 
 

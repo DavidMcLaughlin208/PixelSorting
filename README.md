@@ -30,15 +30,13 @@ This application is still in development. I plan to publish some iterations in t
 
 ### Todo List:
 
-* Add masking functionality
-  * Add GUI panel for mask info
-  * Use mask to determine eligible pixels for sorting
+* Enhance masking functionality
   * Use mask as intervals
-  * Add ability to draw custom mask in application
-* Improve UI clarity and usability
+  * Improve performance of mask drawing
+  * Add ability to use any image as a mask with threshold customization
+* Improve UI clarity and usability: Redo UI in [ofxDatGui](https://github.com/braitsch/ofxDatGui)
  * Add diagnostics and metrics to be shown in app (time taken, current frame for videos)
  * Add ability to apply curves or easing functions to parameter values to change them over the course of a video sorting
- * Clean up GUI panels and logically separate buttons, parameters, etc.
  * Allow for reload of image/video load buttons when contents of folder change
 * Add undo functionality
 
