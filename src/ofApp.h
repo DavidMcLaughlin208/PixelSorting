@@ -83,6 +83,7 @@ class ofApp : public ofBaseApp{
 		
 		ofDirectory directory;
 		ofImage image;
+		ofImage rotatedImage;
 		int unrotatedWidth;
 		int unrotatedHeight;
 		int xPadding;
@@ -93,6 +94,7 @@ class ofApp : public ofBaseApp{
 		int maskOpacity = 110;
 
 		ofPixels imagePixels;
+		ofPixels rotatedImagePixels;
 		ofPixels maskPixels;
 
 		ofxPanel gui;
