@@ -125,6 +125,7 @@ class ofApp : public ofBaseApp{
 
 		int threadCount = 10;
 		ofxIntSlider threadCountSlider;
+		int pixelTransferThreadCount = 14;
 
 		cv::VideoWriter videoWriter;
 		bool createVideo = true;

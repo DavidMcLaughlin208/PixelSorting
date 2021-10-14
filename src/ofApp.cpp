@@ -5,6 +5,38 @@ std::string ofApp::LIGHTNESS = "Lightness";
 std::string ofApp::HUE = "Hue";
 std::string ofApp::SATURATION = "Saturation";
 
+void transferFromPixelsToMat(ofPixels& pixelsRef, cv::Mat& matRef, int section, int sectionLength, bool endingSection, int width, int height) {
+	int bpp = pixelsRef.getBytesPerPixel();
+	int start = section * sectionLength;
+	int end = endingSection ? width * height : (section + 1) * sectionLength;
+	for (int i = start; i < end; i++) {
+		int actualI = i * bpp;
+		int y = int((double)i / (double)width);
+		int x = i - (double)y * width;
+		// The mismatch of indices here is because Mat is in BGRA and pixels is in RGBA format
+		matRef.at<cv::Vec4b>(y, x)[0] = pixelsRef[actualI + 2];
+		matRef.at<cv::Vec4b>(y, x)[1] = pixelsRef[actualI + 1];
+		matRef.at<cv::Vec4b>(y, x)[2] = pixelsRef[actualI + 0];
+		matRef.at<cv::Vec4b>(y, x)[3] = pixelsRef[actualI + 3];
+	}
+}
+
+void transferFromMatToPixels(ofPixels& pixelsRef, cv::Mat& matRef, int section, int sectionLength, bool endingSection, int width, int height) {
+	int bpp = pixelsRef.getBytesPerPixel();
+	int start = section * sectionLength;
+	int end = endingSection ? width * height : (section + 1) * sectionLength;
+	for (int i = start; i < end; i++) {
+		int actualI = i * bpp;
+		int y = int((double)i / (double)width);
+		int x = i - (double)y * width;
+		// The mismatch of indices here is because Mat is in BGRA and pixels is in RGBA format
+		pixelsRef[actualI + 2] = matRef.at<cv::Vec4b>(y, x)[0];
+		pixelsRef[actualI + 1] = matRef.at<cv::Vec4b>(y, x)[1];
+		pixelsRef[actualI + 0] = matRef.at<cv::Vec4b>(y, x)[2];
+		pixelsRef[actualI + 3] = matRef.at<cv::Vec4b>(y, x)[3];
+	}
+}
+
 struct BrightnessComparator {
 	bool operator() (ofColor i, ofColor j) { return (i.getBrightness() < j.getBrightness()); }
 } brightnessComparator;
@@ -236,6 +268,8 @@ void ofApp::update() {
 
 // Code adapted to work with OF pulled from here: https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c/33564950#33564950
 void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
+	std::chrono::steady_clock::time_point rotateStart = std::chrono::high_resolution_clock::now();
+
 	if (angle == 0) {
 		return;
 	}
@@ -243,16 +277,25 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	int bpp = imagePixels.getBytesPerPixel();
 	cv::Mat src;
 	src = cv::Mat_<cv::Vec4b>(image.getHeight(), image.getWidth());
-	for (int i = 0; i < size; i++) {
-		int actualI = i * bpp;
-		int y = int((double)i / (double)image.getWidth());
-		int x = i - (double)y * image.getWidth();
-		// The mismatch of indices here is because Mat is in BGRA and pixels is in RGBA format
-		src.at<cv::Vec4b>(y, x)[0] = imagePixels[actualI + 2];
-		src.at<cv::Vec4b>(y, x)[1] = imagePixels[actualI + 1];
-		src.at<cv::Vec4b>(y, x)[2] = imagePixels[actualI + 0];
-		src.at<cv::Vec4b>(y, x)[3] = imagePixels[actualI + 3];
+
+	vector<std::thread> threadList;
+	for (int i = 0; i < pixelTransferThreadCount; i++) {
+		threadList.push_back(std::thread(transferFromPixelsToMat, std::ref(imagePixels), std::ref(src), i, size / pixelTransferThreadCount, i == pixelTransferThreadCount - 1, image.getWidth(), image.getHeight()));
 	}
+	for (int i = 0; i < threadList.size(); i++) {
+		threadList[i].join();
+	}
+
+	//for (int i = 0; i < size; i++) {
+	//	int actualI = i * bpp;
+	//	int y = int((double)i / (double)image.getWidth());
+	//	int x = i - (double)y * image.getWidth();
+	//	// The mismatch of indices here is because Mat is in BGRA and pixels is in RGBA format
+	//	src.at<cv::Vec4b>(y, x)[0] = imagePixels[actualI + 2];
+	//	src.at<cv::Vec4b>(y, x)[1] = imagePixels[actualI + 1];
+	//	src.at<cv::Vec4b>(y, x)[2] = imagePixels[actualI + 0];
+	//	src.at<cv::Vec4b>(y, x)[3] = imagePixels[actualI + 3];
+	//}
 	
 	// get rotation matrix for rotating the image around its center in pixel coordinates
 	cv::Point2f center((src.cols - 1) / 2.0, (src.rows - 1) / 2.0);
@@ -279,7 +322,14 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	image.resize(dst.cols, dst.rows);
 	size = image.getWidth() * image.getHeight();
 	imagePixels.allocate(dst.cols, dst.rows, OF_IMAGE_COLOR_ALPHA);
-	for (int i = 0; i < size; i++) {
+	vector<std::thread> threadList2;
+	for (int i = 0; i < pixelTransferThreadCount; i++) {
+		threadList2.push_back(std::thread(transferFromMatToPixels, std::ref(imagePixels), std::ref(dst), i, size / pixelTransferThreadCount, i == pixelTransferThreadCount - 1, image.getWidth(), image.getHeight()));
+	}
+	for (int i = 0; i < threadList2.size(); i++) {
+		threadList2[i].join();
+	}
+	/*for (int i = 0; i < size; i++) {
 		int actualI = i * bpp;
 		int y = int((double)i / (double)image.getWidth());
 		int x = i - (double) y * image.getWidth();
@@ -287,9 +337,12 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 		imagePixels[actualI + 1] = dst.at<cv::Vec4b>(y, x)[1];
 		imagePixels[actualI + 0] = dst.at<cv::Vec4b>(y, x)[2];
 		imagePixels[actualI + 3] = dst.at<cv::Vec4b>(y, x)[3];
-	}
+	}*/
 	image.setFromPixels(imagePixels);
 	imagePixels = image.getPixels();
+	std::chrono::steady_clock::time_point rotateEnd = std::chrono::high_resolution_clock::now();
+	long timeTaken = std::chrono::duration_cast<std::chrono::milliseconds>(rotateEnd - rotateStart).count();
+	std::cout << "Thread Count of " << threadCount << " took " << timeTaken << " milliseconds for rotation diff of ." << angle << std::endl;
 }
 
 void ofApp::saveFrameToVideo() {
