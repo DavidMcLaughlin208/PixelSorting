@@ -48,7 +48,7 @@ class ofApp : public ofBaseApp{
 		void start();
 		void selectParameterRadioButton(const void* sender);
 		bool clickedOnImageButton(const void* sender);
-		bool maskToolToggleClicked();
+		void maskToolToggleClicked(ofxDatGuiButtonEvent e);
 		bool clickOnMaskImageButton(const void* sender);
 		void applyBrushStroke(int x, int y, int size, ofApp::BrushMode mode, int value);
 		bool withinMaskBounds(int x, int y);
@@ -82,6 +82,9 @@ class ofApp : public ofBaseApp{
 		static std::string LIGHTNESS;
 		static std::string HUE;
 		static std::string SATURATION;
+		static std::string USEMASKTITLE;
+		static std::string MASKOPACITYTITLE;
+		static std::string DRAWMASKTOOLTITLE;
 		
 		ofDirectory directory;
 		ofImage image;

@@ -4,6 +4,9 @@ std::string ofApp::BRIGHTNESS = "Brightness";
 std::string ofApp::LIGHTNESS = "Lightness";
 std::string ofApp::HUE = "Hue";
 std::string ofApp::SATURATION = "Saturation";
+std::string ofApp::USEMASKTITLE = "Use Mask";
+std::string ofApp::MASKOPACITYTITLE = "Mask Opacity";
+std::string ofApp::DRAWMASKTOOLTITLE = "Draw Mask Tool";
 
 void transferFromPixelsToMat(ofPixels& pixelsRef, cv::Mat& matRef, int section, int sectionLength, bool endingSection, int width, int height) {
 	int bpp = pixelsRef.getBytesPerPixel();
@@ -201,9 +204,9 @@ void ofApp::update() {
 	upperThreshold = upperThresholdSlider;
 	angle = angleSlider;
 	threadCount = threadCountSlider;
-	maskOpacity = maskOpacitySlider * 255;
+	maskOpacity = datMaskPanel->getSlider(MASKOPACITYTITLE)->getValue() * 255;
 	brushSize = maskBrushSizeSlider;
-	useMask = maskToggle;
+	useMask = datMaskPanel->getToggle(USEMASKTITLE)->getChecked();
 	if (started) {
 		vector<std::thread> threadList;
 		for (int i = 0; i < threadCount; i++) {
@@ -604,7 +607,7 @@ void ofApp::setupGui() {
 	maskPanel.add(brushModeCycler.setup("Cycle Brush Shape"));
 	maskPanel.add(maskBrushSizeSlider.setup("Brush Size", 10, 1, 100));
 	brushModeCycler.addListener(this, &ofApp::cycleBrushMode);
-	maskToolToggle.addListener(this, &ofApp::maskToolToggleClicked);
+	//maskToolToggle.addListener(this, &ofApp::maskToolToggleClicked);
 	directory.open("images/masks");
 	directory.listDir();
 	for (int i = 0; i < directory.size(); i++) {
@@ -617,9 +620,10 @@ void ofApp::setupGui() {
 
 void ofApp::setupDatGui() {
 	datMaskPanel = new ofxDatGui(ofGetWidth() - guiWidth * 2, 10);
-	datMaskPanel->addToggle("Use Mask");
-	datMaskPanel->addSlider("Mask Opacity", 0.0, 1.0, 0.4);
-	datMaskPanel->addToggle("Draw Mask Tool");
+	datMaskPanel->addToggle(USEMASKTITLE);
+	datMaskPanel->addSlider(MASKOPACITYTITLE, 0.0, 1.0, 0.4);
+	ofxDatGuiButton* maskBrushToggle = datMaskPanel->addButton(DRAWMASKTOOLTITLE);
+	maskBrushToggle->onButtonEvent(this, &ofApp::maskToolToggleClicked);
 	datMaskPanel->addButton("Cycle Brush Shape");
 	datMaskPanel->addSlider("Brush Size", 0, 100, 10);
 
@@ -654,14 +658,13 @@ bool ofApp::clickOnMaskImageButton(const void* sender) {
 	return true;
 }
 
-bool ofApp::maskToolToggleClicked() {
+void ofApp::maskToolToggleClicked(ofxDatGuiButtonEvent e) {
 	if (currentMouseMode != MouseMode::MaskDraw) {
 		currentMouseMode = MouseMode::MaskDraw;
 	}
 	else {
 		currentMouseMode = MouseMode::Default;
 	}
-	return true;
 }
 
 void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMode mode, int value) {
