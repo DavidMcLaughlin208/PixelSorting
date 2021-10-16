@@ -396,7 +396,7 @@ void ofApp::draw() {
 	if (mask.isAllocated()) {
 		ofPushMatrix();
 		ofSetColor(255, 255, 255, maskOpacity);
-		mask.draw(0, 0);
+		mask.draw(0, 0, mask.getWidth() * currentRatio, mask.getHeight() * currentRatio);
 		ofPopMatrix();
 	}
 	if (currentMouseMode == MouseMode::MaskDraw && withinUnrotatedImageBounds(mouseX, mouseY)) {
@@ -665,16 +665,19 @@ bool ofApp::maskToolToggleClicked() {
 }
 
 void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMode mode, int value) {
-	int topLeftX = centerX - size;
-	int topLeftY = centerY - size;
-	for (int y = 0; y < size * 2; y++) {
-		for (int x = 0; x < size * 2; x++) {
+	int scaledCenterX = centerX / currentRatio;
+	int scaledCenterY = centerY / currentRatio;
+	int scaledSize = size / currentRatio;
+	int topLeftX = scaledCenterX - scaledSize;
+	int topLeftY = scaledCenterY - scaledSize;
+	for (int y = 0; y < scaledSize * 2; y++) {
+		for (int x = 0; x < scaledSize * 2; x++) {
 			int modX = topLeftX + x;
 			int modY = topLeftY + y;
 			if (modX >= 0 && modX < mask.getWidth() && modY >= 0 && modY < mask.getHeight()) {
 				if (mode == BrushMode::Circle) {
-					float distance = sqrt(pow(modX - centerX, 2) + pow(modY - centerY, 2));
-					if (distance > (float) size) continue;
+					float distance = sqrt(pow(modX - scaledCenterX, 2) + pow(modY - scaledCenterY, 2));
+					if (distance > (float) scaledSize) continue;
 				}
 				if (maskPixels.getColor(modX, modY).a != value) {
 					maskPixels.setColor(modX, modY, ofColor(value, value, value, value));
