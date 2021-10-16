@@ -179,6 +179,7 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 void ofApp::setup() {
 	ofEnableAlphaBlending();
 	setupGui();
+	setupDatGui();
 
 	videoExtensions.insert(".mp4");
 	videoExtensions.insert(".mov");
@@ -375,17 +376,22 @@ void ofApp::saveFrameToVideo() {
 //--------------------------------------------------------------
 void ofApp::draw() {
 	if (image.isAllocated()) {
-		int wid = image.getWidth();
-		int hei = image.getHeight();
+		int wid = unrotatedWidth * currentRatio;
+		int hei = unrotatedHeight * currentRatio;
+		imageFbo.begin();
 		ofSetColor(255, 255, 255, 255);
 		ofPushMatrix();
 		ofTranslate(unrotatedWidth / 2, unrotatedHeight / 2 );
 		ofRotate(currentImageAngle, 0, 0, 1);
 		ofTranslate(-image.getWidth() / 2, -image.getHeight() / 2);
 		ofPushMatrix();
-		image.draw(0,0, wid , hei);
+		image.draw(0,0);
 		ofPopMatrix();
 		ofPopMatrix();
+		imageFbo.end();
+
+		ofSetColor(255, 255, 255, 255);
+		imageFbo.draw(0, 0, wid, hei);
 	}
 	if (mask.isAllocated()) {
 		ofPushMatrix();
@@ -481,6 +487,24 @@ void ofApp::loadImage(std::string fileName) {
 		currentMode = Mode::None;
 		return;
 	}
+
+	imageFbo.clear();
+	imageFbo.allocate(unrotatedWidth, unrotatedHeight);
+	imageFbo.begin();
+	ofClear(255, 255, 255, 0);
+	imageFbo.end();
+
+	int wid = unrotatedWidth;
+	int hei = unrotatedHeight;
+	if (wid > maxWidth || hei > maxHeight) {
+		float xRatio = (float)maxWidth / (float)wid;
+		float yRatio = (float)maxHeight / (float)hei;
+		currentRatio = xRatio < yRatio ? xRatio : yRatio;
+	}
+	else {
+		currentRatio = 1.0f;
+	}
+
 	if (mask.isAllocated()) {
 		if (mask.getWidth() < unrotatedWidth || mask.getHeight() < unrotatedHeight) {
 			ofPixels copy;
@@ -501,7 +525,7 @@ void ofApp::loadImage(std::string fileName) {
 		maskPixels = mask.getPixels();
 	}
 	currentFileName = fileName;
-	ofSetWindowShape(unrotatedWidth + guiWidth, unrotatedHeight);
+	ofSetWindowShape(unrotatedWidth * currentRatio + guiWidth, unrotatedHeight * currentRatio);
 	resetGuiPosition();
 	sortingIndex = 0;
 	started = false;
@@ -589,6 +613,16 @@ void ofApp::setupGui() {
 		maskFileButtons.push_back(button);
 		button->addListener(this, &ofApp::clickOnMaskImageButton);
 	}
+}
+
+void ofApp::setupDatGui() {
+	datMaskPanel = new ofxDatGui(ofGetWidth() - guiWidth * 2, 10);
+	datMaskPanel->addToggle("Use Mask");
+	datMaskPanel->addSlider("Mask Opacity", 0.0, 1.0, 0.4);
+	datMaskPanel->addToggle("Draw Mask Tool");
+	datMaskPanel->addButton("Cycle Brush Shape");
+	datMaskPanel->addSlider("Brush Size", 0, 100, 10);
+
 }
 
 void ofApp::saveCurrentImage() {

@@ -62,6 +62,7 @@ class ofApp : public ofBaseApp{
 		void resetGuiPosition();
 
 		void setupGui();
+		void setupDatGui();
 
 		void saveCurrentImage();
 
@@ -95,6 +96,8 @@ class ofApp : public ofBaseApp{
 
 		ofPixels imagePixels;
 		ofPixels maskPixels;
+
+		ofFbo imageFbo;
 
 		ofxPanel gui;
 		ofxPanel maskPanel;
@@ -137,6 +140,10 @@ class ofApp : public ofBaseApp{
 		std::set<std::string> videoExtensions;
 		std::set<std::string> imageExtensions;
 
+		int maxWidth = 1280;
+		int maxHeight = 800;
+		float currentRatio = 1.0f;
+
 		// Brush variables
 		int brushSize = 5;
 		BrushMode currentBrushMode = BrushMode::Circle;
@@ -156,5 +163,6 @@ class ofApp : public ofBaseApp{
 		MouseMode currentMouseMode = MouseMode::Default;
 		std::map<std::string, SortParameter> sortParameterTable;
 
-
+		//ofxDatGui
+		ofxDatGui* datMaskPanel;
 };
