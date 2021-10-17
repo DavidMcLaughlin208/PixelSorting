@@ -280,7 +280,9 @@ void ofApp::update() {
 
 		
 	}
-	//maskImagesScrollView->setPosition(ofGetWidth() - guiWidth * 2, datMaskPanel->getHeight() + 10);
+	imageScrollView->setPosition(ofGetWidth() - guiWidth * 2, datImagePanel->getHeight() + 10);
+	datMaskPanel->setPosition(ofGetWidth() - guiWidth, 10);
+	maskImagesScrollView->setPosition(ofGetWidth() - guiWidth, datMaskPanel->getHeight() + 10);
 	imageScrollView->update();
 	maskImagesScrollView->update();
 }
@@ -403,16 +405,22 @@ void ofApp::draw() {
 		ofPopMatrix();
 	}
 	if (currentMouseMode == MouseMode::MaskDraw && withinUnrotatedImageBounds(mouseX, mouseY)) {
+		ofNoFill();
+		ofSetColor(255, 0, 0, 255);
 		switch (currentBrushMode) {
 		case (BrushMode::Circle):
-			ofNoFill();
-			ofSetColor(255, 0, 0, 255);
 			ofCircle(glm::vec3(mouseX, mouseY, 0), brushSize);
 			break;
 		case (BrushMode::Square):
-			ofNoFill();
-			ofSetColor(255, 0, 0, 255);
 			ofRect(mouseX - brushSize, mouseY - brushSize, brushSize * 2, brushSize * 2);
+			break;
+		case (BrushMode::ClickAndDrag):
+			if (mouseDown) {
+				int minX = min(clickedX, mouseX);
+				int minY = min(clickedY, mouseY);
+				ofRect(minX, minY, abs(clickedX - mouseX), abs(clickedY - mouseY));
+			}
+			break;
 		}
 	}
 	imageScrollView->draw();
@@ -555,18 +563,6 @@ void ofApp::start(ofxDatGuiButtonEvent e) {
 	}
 }
 
-void ofApp::selectParameterRadioButton(const void* sender) {
-	std::string name = ((ofParameter<bool>*)sender)->getName();
-	currentlySelectedSortParameter = sortParameterTable.find(name)->second;
-	selectedThresholdVariable = (string)"Sorting by: " + name;
-}
-
-bool ofApp::clickedOnImageButton(const void* sender) {
-	ofParameter<bool>* button = (ofParameter<bool>*)sender;
-	loadImage(button->getName());
-	return true;
-}
-
 void ofApp::resetGuiPosition() {
 	datImagePanel->setPosition(ofGetWidth() - guiWidth * 2, 10);
 	imageScrollView->setPosition(ofGetWidth() - guiWidth * 2, datImagePanel->getHeight() + 10);
@@ -606,6 +602,8 @@ void ofApp::setupDatGui() {
 	datMaskPanel->setWidth(guiWidth);
 	datMaskPanel->addHeader("Mask Controls");
 	useMaskToggle = datMaskPanel->addToggle(USEMASKTITLE);
+	ofxDatGuiButton* clearMaskButton = datMaskPanel->addButton("Clear Mask");
+	clearMaskButton->onButtonEvent(this, &ofApp::clearMask);
 	maskOpacitySlider = datMaskPanel->addSlider(MASKOPACITYTITLE, 0.0, 1.0, 0.4);
 	ofxDatGuiButton* maskBrushToggle = datMaskPanel->addButton(DRAWMASKTOOLTITLE);
 	maskBrushToggle->onButtonEvent(this, &ofApp::maskToolToggleClicked);
@@ -675,6 +673,14 @@ void ofApp::selectSortingParameter(ofxDatGuiDropdownEvent e) {
 	currentlySelectedSortParameter = (SortParameter)e.child;
 }
 
+void ofApp::clearMask(ofxDatGuiButtonEvent e) {
+	mask.clear();
+	mask.allocate(unrotatedWidth, unrotatedHeight, OF_IMAGE_COLOR_ALPHA);
+	mask.setColor(ofColor(0, 0, 0, 0));
+	mask.update();
+	maskPixels = mask.getPixels();
+}
+
 void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMode mode, int value) {
 	int scaledCenterX = centerX / currentRatio;
 	int scaledCenterY = centerY / currentRatio;
@@ -737,14 +743,28 @@ void ofApp::mouseMoved(int x, int y ){
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button){
 	if (currentMouseMode == MouseMode::MaskDraw && withinMaskBounds(x, y)) {
-		applyBrushStroke(x, y, brushSize, currentBrushMode, 255 * (button / 2));
+		if (!(currentBrushMode == BrushMode::ClickAndDrag)) {
+			if (dragCounter % 2 == 0) {
+				std::cout << "Dragged: " << x << ", " << y << std::endl;
+				applyBrushStroke(x, y, brushSize, currentBrushMode, 255 * (abs(button - 2) / 2));
+			} 
+			dragCounter++;
+		}
 	}
 }
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
-	if (currentMouseMode == MouseMode::MaskDraw && withinMaskBounds(x, y)) {
-		applyBrushStroke(x, y, brushSize, currentBrushMode, 255 * (button / 2));
+	if (currentMouseMode == MouseMode::MaskDraw && withinUnrotatedImageBounds(x, y)) {
+		mouseDown = true;
+		clickedX = x;
+		clickedY = y;
+		buttonDown = button;
+		if (currentBrushMode == BrushMode::ClickAndDrag) {
+		}
+		else {
+			applyBrushStroke(x, y, brushSize, currentBrushMode, 255 * (abs(button - 2) / 2));
+		}
 	}
 }
 
@@ -758,13 +778,34 @@ void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY) {
 	else {
 		brushSize = max(0, brushSize - 1);
 	}
-	//maskBrushSizeSlider = brushSize;
 	datMaskPanel->getSlider(BRUSHSIZESLIDERTITLE)->setValue(brushSize);
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
-
+	
+	// Left click button value is 0, right click button value is 2;
+	// The below calculation comes to 255 for left click and 0 for right click
+	int value = 255 * abs(button - 2) / 2;
+	if (currentMouseMode == MouseMode::MaskDraw && withinUnrotatedImageBounds(x, y)) {
+		if (currentBrushMode == BrushMode::ClickAndDrag) {
+			int minX = min(clickedX, x);
+			int minY = min(clickedY, y);
+			int maxX = max(clickedX, x);
+			int maxY = max(clickedY, y);
+			for (int row = minY; row < maxY; row++) {
+				for (int col = minX; col < maxX; col++) {
+					if (withinMaskBounds(col, row)) {
+						maskPixels.setColor(col, row, ofColor(value, value, value, value));
+					}
+				}
+			}
+			mask.setFromPixels(maskPixels);
+			maskPixels = mask.getPixels();
+		}
+	}
+	mouseDown = false;
+	dragCounter = 0;
 }
 
 //--------------------------------------------------------------

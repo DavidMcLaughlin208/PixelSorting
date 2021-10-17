@@ -52,6 +52,7 @@ class ofApp : public ofBaseApp{
 		void clickOnImageButton(ofxDatGuiScrollViewEvent e);
 		void brushTypeSelected(ofxDatGuiDropdownEvent e);
 		void selectSortingParameter(ofxDatGuiDropdownEvent e);
+		void clearMask(ofxDatGuiButtonEvent e);
 		void applyBrushStroke(int x, int y, int size, ofApp::BrushMode mode, int value);
 		bool withinMaskBounds(int x, int y);
 		bool withinUnrotatedImageBounds(int x, int y);
@@ -141,6 +142,12 @@ class ofApp : public ofBaseApp{
 		int maxWidth = 1280;
 		int maxHeight = 800;
 		float currentRatio = 1.0f;
+
+		bool mouseDown = false;
+		int buttonDown = 0;
+		int clickedX;
+		int clickedY;
+		int dragCounter = 0;
 
 		// Brush variables
 		int brushSize = 5;

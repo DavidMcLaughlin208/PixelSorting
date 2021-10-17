@@ -33,6 +33,9 @@ Documentation and a walkthrough video will be made as well.
 
 ### Caveats
 
+<details>
+<summary>Click to expand</summary>
+
 In order for an image to be sorted at any angle, each image pixel needs to be rotated within a 2D matrix. Since contents of a 2D matrix cannot be cleanly rotated at anything other than 90, 180, or 270 degrees, the 'warpAffine' function
 used by OpenCV will perform some color interpolation on the pixels to make the rotated image retain the same dimensions and all have the pixels still be adjacent to each other. After the sorting is performed, when saving an image, it must be rotated back to a 0 degree orientation.
 These multiple rotations will cause the image to become slightly blurred (not very noticable though) and there may be some color artifacts at parts of the image borders. Additionally, these rotations increase the time it takes for each sort. This can signficantly increase the time required to
@@ -42,12 +45,14 @@ None of the above issues apply when sorting an image at 0 degree angle (default,
 
 ---
 
-When sorting images it is recommended to have at least 1GB of RAM. If soritng videos you may need significantly more RAM (4GB, 8GB depending on the size of the video file)
+When sorting images it is recommended to have at least 1GB of RAM. If sorting videos you may need significantly more RAM (4GB, 8GB depending on the size of the video file)
 
 Sorted video files seem to be significantly larger in memory than the unsorted version of the video (6.7MB -> 70MB). This may be fixable by tweaking some OpenCV settings but will need to look into it.
 
 As of now a video file can only be sorted in one go, start to finish. If you computer shuts off, goes to sleep, or for any reason any issue occurs during the sorting, the whole new video file will be corrupted and the sorting process will need to restart (the original file will not be corrupted)
 In the future I would like to add the feature of sorting the video in segments and stitching the together at the end so if any issue occurs it will be contained to the current segment.
+
+</details>
 
 ### Remaining items before initial release
   * Filter image and video folders
