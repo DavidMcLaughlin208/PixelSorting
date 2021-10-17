@@ -11,6 +11,12 @@ std::string ofApp::BRUSHSIZESLIDERTITLE = "Brush Size";
 std::string ofApp::CIRCLE = "Circle";
 std::string ofApp::SQUARE = "Square";
 std::string ofApp::CLICKANDDRAG = "Click And Drag";
+std::string ofApp::SORTBUTTONTITLE = "Sort";
+std::string ofApp::SAVEIMAGEBUTTONTITLE = "Save Image";
+std::string ofApp::LOWERTHRESHOLDTITLE = "Lower Threshold";
+std::string ofApp::UPPERTHRESHOLDTITLE = "Upper Threshold";
+std::string ofApp::ANGLESLIDERTITLE = "Angle";
+std::string ofApp::THREADCOUNTSLIDERTITLE = "Thread Count";
 
 void transferFromPixelsToMat(ofPixels& pixelsRef, cv::Mat& matRef, int section, int sectionLength, bool endingSection, int width, int height) {
 	int bpp = pixelsRef.getBytesPerPixel();
@@ -69,7 +75,6 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 	int endOfInterval = -1;
 
 	ofColor color;
-	char pixelSwapBuffer[4];
 	for (int i = start * imageWidth; i < end; i++) {
 		int actualI = i * bytesPerPixel;
 		color.set(pixelsRef[actualI + 0], pixelsRef[actualI + 1], pixelsRef[actualI + 2], pixelsRef[actualI + 3]);
@@ -91,6 +96,7 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 		}
 		bool maskApproved = !useMask;
 		if (useMask) {
+			// Take rotated pixel location in image and find its unrotated location to check in the mask pixels
 			int y = int((double)i / (double)pixelsRef.getWidth());
 			int x = i - (double)y * pixelsRef.getWidth();
 
@@ -185,9 +191,9 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 //--------------------------------------------------------------
 void ofApp::setup() {
 	ofEnableAlphaBlending();
-	setupGui();
 
 	brushTypeOptions = { CIRCLE, SQUARE, CLICKANDDRAG };
+	sortingParameterOptions = { BRIGHTNESS, HUE, SATURATION };
 	setupDatGui();
 
 	videoExtensions.insert(".mp4");
@@ -206,17 +212,17 @@ void ofApp::setup() {
 //--------------------------------------------------------------
 void ofApp::update() {
 	ofSetWindowTitle(ofToString(ofGetFrameRate()));
-	threshold = thresholdSlider;
-	upperThreshold = upperThresholdSlider;
-	angle = angleSlider;
-	threadCount = threadCountSlider;
-	maskOpacity = datMaskPanel->getSlider(MASKOPACITYTITLE)->getValue() * 255;
-	brushSize = datMaskPanel->getSlider(BRUSHSIZESLIDERTITLE)->getValue();
-	useMask = datMaskPanel->getToggle(USEMASKTITLE)->getChecked();
+	threshold = thresholdSlider->getValue();
+	upperThreshold = upperThresholdSlider->getValue();
+	angle = angleSlider->getValue();
+	threadCount = threadCountSlider->getValue();
+	maskOpacity = maskOpacitySlider->getValue() * 255;
+	brushSize = brushSizeSlider->getValue();
+	useMask = useMaskToggle->getChecked();
 	if (started) {
 		vector<std::thread> threadList;
 		for (int i = 0; i < threadCount; i++) {
-			threadList.push_back(std::thread(pixelSortRow, sortingIndex, image.getWidth(), image.getHeight(), std::ref(imagePixels), std::ref(maskPixels), currentlySelectedThresholdVariable, threshold, upperThreshold, useMask, currentImageAngle, xPadding, yPadding));
+			threadList.push_back(std::thread(pixelSortRow, sortingIndex, image.getWidth(), image.getHeight(), std::ref(imagePixels), std::ref(maskPixels), currentlySelectedSortParameter, threshold, upperThreshold, useMask, currentImageAngle, xPadding, yPadding));
 			sortingIndex += 1;
 
 			if (sortingIndex >= image.getHeight() - 1) {
@@ -274,7 +280,8 @@ void ofApp::update() {
 
 		
 	}
-	maskImagesScrollView->setPosition(ofGetWidth() - guiWidth * 2, datMaskPanel->getHeight() + 10);
+	//maskImagesScrollView->setPosition(ofGetWidth() - guiWidth * 2, datMaskPanel->getHeight() + 10);
+	imageScrollView->update();
 	maskImagesScrollView->update();
 }
 
@@ -290,6 +297,9 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	cv::Mat src;
 	src = cv::Mat_<cv::Vec4b>(image.getHeight(), image.getWidth());
 
+	// Multithread on transferring pixels from OF data structure to OpenCV data structure
+	// This is a waste of time regardless. Could potentially rewrite all of the sorting and image logic to just use OpenCV
+	// to eliminate this entirely
 	vector<std::thread> threadList;
 	for (int i = 0; i < pixelTransferThreadCount; i++) {
 		threadList.push_back(std::thread(transferFromPixelsToMat, std::ref(imagePixels), std::ref(src), i, size / pixelTransferThreadCount, i == pixelTransferThreadCount - 1, image.getWidth(), image.getHeight()));
@@ -297,22 +307,13 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	for (int i = 0; i < threadList.size(); i++) {
 		threadList[i].join();
 	}
-
-	//for (int i = 0; i < size; i++) {
-	//	int actualI = i * bpp;
-	//	int y = int((double)i / (double)image.getWidth());
-	//	int x = i - (double)y * image.getWidth();
-	//	// The mismatch of indices here is because Mat is in BGRA and pixels is in RGBA format
-	//	src.at<cv::Vec4b>(y, x)[0] = imagePixels[actualI + 2];
-	//	src.at<cv::Vec4b>(y, x)[1] = imagePixels[actualI + 1];
-	//	src.at<cv::Vec4b>(y, x)[2] = imagePixels[actualI + 0];
-	//	src.at<cv::Vec4b>(y, x)[3] = imagePixels[actualI + 3];
-	//}
 	
 	// get rotation matrix for rotating the image around its center in pixel coordinates
 	cv::Point2f center((src.cols - 1) / 2.0, (src.rows - 1) / 2.0);
 	cv::Mat rot = cv::getRotationMatrix2D(center, angle, 1.0);
 	// determine bounding rectangle, center not relevant
+	// We calculate the largest bounding box necessary for the image to fit at any angle so if multiple rotations
+	// occur on the same image we only have to add padding once
 	cv::Size boxSize;
 	if (paddingAddedToImage) {
 		boxSize = src.size();
@@ -341,20 +342,11 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	for (int i = 0; i < threadList2.size(); i++) {
 		threadList2[i].join();
 	}
-	/*for (int i = 0; i < size; i++) {
-		int actualI = i * bpp;
-		int y = int((double)i / (double)image.getWidth());
-		int x = i - (double) y * image.getWidth();
-		imagePixels[actualI + 2] = dst.at<cv::Vec4b>(y, x)[0];
-		imagePixels[actualI + 1] = dst.at<cv::Vec4b>(y, x)[1];
-		imagePixels[actualI + 0] = dst.at<cv::Vec4b>(y, x)[2];
-		imagePixels[actualI + 3] = dst.at<cv::Vec4b>(y, x)[3];
-	}*/
 	image.setFromPixels(imagePixels);
 	imagePixels = image.getPixels();
 	std::chrono::steady_clock::time_point rotateEnd = std::chrono::high_resolution_clock::now();
 	long timeTaken = std::chrono::duration_cast<std::chrono::milliseconds>(rotateEnd - rotateStart).count();
-	std::cout << "Thread Count of " << threadCount << " took " << timeTaken << " milliseconds for rotation diff of ." << angle << std::endl;
+	std::cout << "Rotating image took " << timeTaken << " milliseconds for rotation diff of " << angle << " degrees." << std::endl;
 }
 
 void ofApp::saveFrameToVideo() {
@@ -423,8 +415,7 @@ void ofApp::draw() {
 			ofRect(mouseX - brushSize, mouseY - brushSize, brushSize * 2, brushSize * 2);
 		}
 	}
-	gui.draw();
-	//maskPanel.draw();
+	imageScrollView->draw();
 	maskImagesScrollView->draw();
 }
 
@@ -477,6 +468,9 @@ void ofApp::loadImage(std::string fileName) {
 			videoWriter.release();
 		}
 		videoPlayer.load("images/" + fileName);
+		if (!videoPlayer.isLoaded()) {
+			return;
+		}
 		videoPlayer.firstFrame();
 		videoPlayer.play();
 		videoPlayer.setPaused(true);
@@ -495,7 +489,7 @@ void ofApp::loadImage(std::string fileName) {
 		currentMode = Mode::Video;
 	}
 	else {
-		//Display some error message
+		// Display some error message
 		currentMode = Mode::None;
 		return;
 	}
@@ -537,13 +531,13 @@ void ofApp::loadImage(std::string fileName) {
 		maskPixels = mask.getPixels();
 	}
 	currentFileName = fileName;
-	ofSetWindowShape(unrotatedWidth * currentRatio + guiWidth, unrotatedHeight * currentRatio);
+	ofSetWindowShape(unrotatedWidth * currentRatio + guiWidth * 2, unrotatedHeight * currentRatio);
 	resetGuiPosition();
 	sortingIndex = 0;
 	started = false;
 }
 
-void ofApp::start() {
+void ofApp::start(ofxDatGuiButtonEvent e) {
 	if (currentMode == Mode::None) {
 		return;
 	}
@@ -563,7 +557,7 @@ void ofApp::start() {
 
 void ofApp::selectParameterRadioButton(const void* sender) {
 	std::string name = ((ofParameter<bool>*)sender)->getName();
-	currentlySelectedThresholdVariable = sortParameterTable.find(name)->second;
+	currentlySelectedSortParameter = sortParameterTable.find(name)->second;
 	selectedThresholdVariable = (string)"Sorting by: " + name;
 }
 
@@ -574,83 +568,66 @@ bool ofApp::clickedOnImageButton(const void* sender) {
 }
 
 void ofApp::resetGuiPosition() {
-	gui.setPosition(ofGetWidth() - guiWidth, 10);
-	maskPanel.setPosition(ofGetWidth() - guiWidth * 2 - 10, 10);
-}
-
-void ofApp::setupGui() {
-	gui.setup();
-	gui.setPosition(ofGetWidth() - guiWidth, 10);
-	gui.add(sortButton.setup("Sort"));
-	sortButton.addListener(this, &ofApp::start);
-	gui.add(saveButton.setup("Save Image"));
-	saveButton.addListener(this, &ofApp::saveCurrentImage);
-	gui.add(thresholdSlider.setup("Threshold", 0.25, 0.0, 1.0));
-	gui.add(upperThresholdSlider.setup("Upper Threshold", 0.8, 0.0, 1.0));
-	gui.add(angleSlider.setup("Angle", 0, 0, 359));
-	gui.add(threadCountSlider.setup("Thread Count", 17, 0, 30));
-
-	gui.add(selectedThresholdVariable.setup((string)"Sorting by: " + BRIGHTNESS));
-	gui.add(brightnessRadio.setup(BRIGHTNESS));
-	gui.add(hueRadio.setup(HUE));
-	gui.add(saturationRadio.setup(SATURATION));
-	brightnessRadio.addListener(this, &ofApp::selectParameterRadioButton);
-	hueRadio.addListener(this, &ofApp::selectParameterRadioButton);
-	saturationRadio.addListener(this, &ofApp::selectParameterRadioButton);
-
-	// May want to separate this to a function at some point
-	imageDirectory.open("images");
-	imageDirectory.listDir();
-	for (int i = 0; i < imageDirectory.size(); i++) {
-		ofxButton* button = new ofxButton();
-		gui.add(button->setup(imageDirectory.getName(i)));
-		buttons.push_back(button);
-		button->addListener(this, &ofApp::clickedOnImageButton);
-	}
-
-	//maskPanel.setup();
-	//maskPanel.setPosition(ofGetWidth() - guiWidth * 2 - 10, 10);
-	//maskPanel.add(maskToggle.setup(false));
-	//maskPanel.add(maskOpacitySlider.setup("Mask Opacity", 0.4, 0.0, 1.0));
-	//maskPanel.add(maskToolToggle.setup("Mask Drawing Tool"));
-	//maskPanel.add(brushModeCycler.setup("Cycle Brush Shape"));
-	//maskPanel.add(maskBrushSizeSlider.setup("Brush Size", 10, 1, 100));
-	//brushModeCycler.addListener(this, &ofApp::cycleBrushMode);
-	////maskToolToggle.addListener(this, &ofApp::maskToolToggleClicked);
-	//maskDirectory.open("images/masks");
-	//maskDirectory.listDir();
-	//for (int i = 0; i < imageDirectory.size(); i++) {
-	//	ofxButton* button = new ofxButton();
-	//	maskPanel.add(button->setup(imageDirectory.getName(i)));
-	//	maskFileButtons.push_back(button);
-	//	//button->addListener(this, &ofApp::clickOnMaskImageButton);
-	//}
+	datImagePanel->setPosition(ofGetWidth() - guiWidth * 2, 10);
+	imageScrollView->setPosition(ofGetWidth() - guiWidth * 2, datImagePanel->getHeight() + 10);
+	datMaskPanel->setPosition(ofGetWidth() - guiWidth, 10);
+	maskImagesScrollView->setPosition(ofGetWidth() - guiWidth, datMaskPanel->getHeight() + 10);
 }
 
 void ofApp::setupDatGui() {
-	datMaskPanel = new ofxDatGui(ofGetWidth() - guiWidth * 2, 10);
-	datMaskPanel->setWidth(250);
+	datImagePanel = new ofxDatGui(ofGetWidth() - guiWidth * 2, 10);
+	datImagePanel->setWidth(guiWidth);
+	datImagePanel->addHeader("Image Sorting Controls");
+	ofxDatGuiButton* sortButton = datImagePanel->addButton(SORTBUTTONTITLE);
+	sortButton->onButtonEvent(this, &ofApp::start);
+	ofxDatGuiButton* saveButton = datImagePanel->addButton(SAVEIMAGEBUTTONTITLE);
+	saveButton->onButtonEvent(this, &ofApp::saveCurrentImage);
+	ofxDatGuiDropdown* sortingParameterDropdown = datImagePanel->addDropdown("Sorting Parameter", sortingParameterOptions);
+	sortingParameterDropdown->onDropdownEvent(this, &ofApp::selectSortingParameter);
+	sortingParameterDropdown->select(0);
+	thresholdSlider = datImagePanel->addSlider(LOWERTHRESHOLDTITLE, 0.0f, 1.0f, 0.25f);
+	upperThresholdSlider = datImagePanel->addSlider(UPPERTHRESHOLDTITLE, 0.0f, 1.0f, 0.80f);
+	angleSlider = datImagePanel->addSlider(ANGLESLIDERTITLE, 0, 359, 0);
+	angleSlider->setPrecision(0);
+	threadCountSlider = datImagePanel->addSlider(THREADCOUNTSLIDERTITLE, 1, 30, 17);
+	datImagePanel->addLabel("Load Image");
+	imageScrollView = new ofxDatGuiScrollView("Mask Image Files", (ofGetHeight() - datImagePanel->getHeight()) / 26 - 1);
+	imageScrollView->setWidth(guiWidth);
+	imageScrollView->setPosition(ofGetWidth() - guiWidth * 2, datImagePanel->getHeight() + 10);
+	imageScrollView->onScrollViewEvent(this, &ofApp::clickOnImageButton);
+	imageDirectory.open("images");
+	imageDirectory.listDir();
+	for (int i = 0; i < imageDirectory.size(); i++) {
+		imageScrollView->add(imageDirectory.getName(i));
+		imageScrollView->getItemAtIndex(i)->setLabelUpperCase(false);
+	}
+
+	datMaskPanel = new ofxDatGui(ofGetWidth() - guiWidth, 10);
+	datMaskPanel->setWidth(guiWidth);
 	datMaskPanel->addHeader("Mask Controls");
-	datMaskPanel->addToggle(USEMASKTITLE);
-	datMaskPanel->addSlider(MASKOPACITYTITLE, 0.0, 1.0, 0.4);
+	useMaskToggle = datMaskPanel->addToggle(USEMASKTITLE);
+	maskOpacitySlider = datMaskPanel->addSlider(MASKOPACITYTITLE, 0.0, 1.0, 0.4);
 	ofxDatGuiButton* maskBrushToggle = datMaskPanel->addButton(DRAWMASKTOOLTITLE);
 	maskBrushToggle->onButtonEvent(this, &ofApp::maskToolToggleClicked);
 	ofxDatGuiDropdown* brushTypeDropdown = datMaskPanel->addDropdown("Brush Type", brushTypeOptions);
 	brushTypeDropdown->onDropdownEvent(this, &ofApp::brushTypeSelected);
-	datMaskPanel->addSlider(BRUSHSIZESLIDERTITLE, 0, 100, 10);
-	maskImagesScrollView = new ofxDatGuiScrollView("Mask Image Files", 10);
-	maskImagesScrollView->setWidth(250);
-	maskImagesScrollView->setPosition(ofGetWidth() - guiWidth * 2, datMaskPanel->getHeight() + 10);
+	brushTypeDropdown->select(0);
+	brushSizeSlider = datMaskPanel->addSlider(BRUSHSIZESLIDERTITLE, 0, 100, 10);
+	datMaskPanel->addLabel("Load Mask");
+	maskImagesScrollView = new ofxDatGuiScrollView("Mask Image Files", (ofGetHeight() - datMaskPanel->getHeight()) / 26 - 1);
+	maskImagesScrollView->setWidth(guiWidth);
+	maskImagesScrollView->setPosition(ofGetWidth() - guiWidth, datMaskPanel->getHeight() + 10);
 	maskImagesScrollView->onScrollViewEvent(this, &ofApp::clickOnMaskImageButton);
 	maskDirectory.open("images/masks");
 	maskDirectory.listDir();
 	for (int i = 0; i < maskDirectory.size(); i++) {
 		maskImagesScrollView->add(maskDirectory.getName(i));
+		maskImagesScrollView->getItemAtIndex(i)->setLabelUpperCase(false);
 	}
 	
 }
 
-void ofApp::saveCurrentImage() {
+void ofApp::saveCurrentImage(ofxDatGuiButtonEvent e) {
 	if (image.isAllocated()) {
 		ofFilePath filePath;
 		std::string fileName = filePath.getBaseName(currentFileName);
@@ -677,6 +654,10 @@ void ofApp::clickOnMaskImageButton(ofxDatGuiScrollViewEvent e) {
 	loadMask(e.target->getName());
 }
 
+void ofApp::clickOnImageButton(ofxDatGuiScrollViewEvent e) {
+	loadImage(e.target->getName());
+}
+
 void ofApp::maskToolToggleClicked(ofxDatGuiButtonEvent e) {
 	if (currentMouseMode != MouseMode::MaskDraw) {
 		currentMouseMode = MouseMode::MaskDraw;
@@ -688,6 +669,10 @@ void ofApp::maskToolToggleClicked(ofxDatGuiButtonEvent e) {
 
 void ofApp::brushTypeSelected(ofxDatGuiDropdownEvent e) {
 	currentBrushMode = (BrushMode)e.child;
+}
+
+void ofApp::selectSortingParameter(ofxDatGuiDropdownEvent e) {
+	currentlySelectedSortParameter = (SortParameter)e.child;
 }
 
 void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMode mode, int value) {
@@ -720,7 +705,7 @@ bool ofApp::withinMaskBounds(int x, int y) {
 }
 
 bool ofApp::withinUnrotatedImageBounds(int x, int y) {
-	return x >= 0 && x < unrotatedWidth && y >= 0 && y < unrotatedHeight;
+	return x >= 0 && x < unrotatedWidth * currentRatio && y >= 0 && y < unrotatedHeight * currentRatio;
 }
 
 
@@ -764,6 +749,9 @@ void ofApp::mousePressed(int x, int y, int button){
 }
 
 void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY) {
+	if (!withinUnrotatedImageBounds(x, y)) {
+		return;
+	}
 	if (scrollY > 0) {
 		brushSize = min(100, brushSize + 1);
 	}
