@@ -7,6 +7,10 @@ std::string ofApp::SATURATION = "Saturation";
 std::string ofApp::USEMASKTITLE = "Use Mask";
 std::string ofApp::MASKOPACITYTITLE = "Mask Opacity";
 std::string ofApp::DRAWMASKTOOLTITLE = "Draw Mask Tool";
+std::string ofApp::BRUSHSIZESLIDERTITLE = "Brush Size";
+std::string ofApp::CIRCLE = "Circle";
+std::string ofApp::SQUARE = "Square";
+std::string ofApp::CLICKANDDRAG = "Click And Drag";
 
 void transferFromPixelsToMat(ofPixels& pixelsRef, cv::Mat& matRef, int section, int sectionLength, bool endingSection, int width, int height) {
 	int bpp = pixelsRef.getBytesPerPixel();
@@ -182,6 +186,8 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 void ofApp::setup() {
 	ofEnableAlphaBlending();
 	setupGui();
+
+	brushTypeOptions = { CIRCLE, SQUARE, CLICKANDDRAG };
 	setupDatGui();
 
 	videoExtensions.insert(".mp4");
@@ -205,7 +211,7 @@ void ofApp::update() {
 	angle = angleSlider;
 	threadCount = threadCountSlider;
 	maskOpacity = datMaskPanel->getSlider(MASKOPACITYTITLE)->getValue() * 255;
-	brushSize = maskBrushSizeSlider;
+	brushSize = datMaskPanel->getSlider(BRUSHSIZESLIDERTITLE)->getValue();
 	useMask = datMaskPanel->getToggle(USEMASKTITLE)->getChecked();
 	if (started) {
 		vector<std::thread> threadList;
@@ -268,6 +274,8 @@ void ofApp::update() {
 
 		
 	}
+	maskImagesScrollView->setPosition(ofGetWidth() - guiWidth * 2, datMaskPanel->getHeight() + 10);
+	maskImagesScrollView->update();
 }
 
 // Code adapted to work with OF pulled from here: https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c/33564950#33564950
@@ -416,7 +424,8 @@ void ofApp::draw() {
 		}
 	}
 	gui.draw();
-	maskPanel.draw();
+	//maskPanel.draw();
+	maskImagesScrollView->draw();
 }
 
 void ofApp::loadMask(std::string fileName) {
@@ -590,43 +599,55 @@ void ofApp::setupGui() {
 	saturationRadio.addListener(this, &ofApp::selectParameterRadioButton);
 
 	// May want to separate this to a function at some point
-	directory.open("images");
-	directory.listDir();
-	for (int i = 0; i < directory.size(); i++) {
+	imageDirectory.open("images");
+	imageDirectory.listDir();
+	for (int i = 0; i < imageDirectory.size(); i++) {
 		ofxButton* button = new ofxButton();
-		gui.add(button->setup(directory.getName(i)));
+		gui.add(button->setup(imageDirectory.getName(i)));
 		buttons.push_back(button);
 		button->addListener(this, &ofApp::clickedOnImageButton);
 	}
 
-	maskPanel.setup();
-	maskPanel.setPosition(ofGetWidth() - guiWidth * 2 - 10, 10);
-	maskPanel.add(maskToggle.setup(false));
-	maskPanel.add(maskOpacitySlider.setup("Mask Opacity", 0.4, 0.0, 1.0));
-	maskPanel.add(maskToolToggle.setup("Mask Drawing Tool"));
-	maskPanel.add(brushModeCycler.setup("Cycle Brush Shape"));
-	maskPanel.add(maskBrushSizeSlider.setup("Brush Size", 10, 1, 100));
-	brushModeCycler.addListener(this, &ofApp::cycleBrushMode);
-	//maskToolToggle.addListener(this, &ofApp::maskToolToggleClicked);
-	directory.open("images/masks");
-	directory.listDir();
-	for (int i = 0; i < directory.size(); i++) {
-		ofxButton* button = new ofxButton();
-		maskPanel.add(button->setup(directory.getName(i)));
-		maskFileButtons.push_back(button);
-		button->addListener(this, &ofApp::clickOnMaskImageButton);
-	}
+	//maskPanel.setup();
+	//maskPanel.setPosition(ofGetWidth() - guiWidth * 2 - 10, 10);
+	//maskPanel.add(maskToggle.setup(false));
+	//maskPanel.add(maskOpacitySlider.setup("Mask Opacity", 0.4, 0.0, 1.0));
+	//maskPanel.add(maskToolToggle.setup("Mask Drawing Tool"));
+	//maskPanel.add(brushModeCycler.setup("Cycle Brush Shape"));
+	//maskPanel.add(maskBrushSizeSlider.setup("Brush Size", 10, 1, 100));
+	//brushModeCycler.addListener(this, &ofApp::cycleBrushMode);
+	////maskToolToggle.addListener(this, &ofApp::maskToolToggleClicked);
+	//maskDirectory.open("images/masks");
+	//maskDirectory.listDir();
+	//for (int i = 0; i < imageDirectory.size(); i++) {
+	//	ofxButton* button = new ofxButton();
+	//	maskPanel.add(button->setup(imageDirectory.getName(i)));
+	//	maskFileButtons.push_back(button);
+	//	//button->addListener(this, &ofApp::clickOnMaskImageButton);
+	//}
 }
 
 void ofApp::setupDatGui() {
 	datMaskPanel = new ofxDatGui(ofGetWidth() - guiWidth * 2, 10);
+	datMaskPanel->setWidth(250);
+	datMaskPanel->addHeader("Mask Controls");
 	datMaskPanel->addToggle(USEMASKTITLE);
 	datMaskPanel->addSlider(MASKOPACITYTITLE, 0.0, 1.0, 0.4);
 	ofxDatGuiButton* maskBrushToggle = datMaskPanel->addButton(DRAWMASKTOOLTITLE);
 	maskBrushToggle->onButtonEvent(this, &ofApp::maskToolToggleClicked);
-	datMaskPanel->addButton("Cycle Brush Shape");
-	datMaskPanel->addSlider("Brush Size", 0, 100, 10);
-
+	ofxDatGuiDropdown* brushTypeDropdown = datMaskPanel->addDropdown("Brush Type", brushTypeOptions);
+	brushTypeDropdown->onDropdownEvent(this, &ofApp::brushTypeSelected);
+	datMaskPanel->addSlider(BRUSHSIZESLIDERTITLE, 0, 100, 10);
+	maskImagesScrollView = new ofxDatGuiScrollView("Mask Image Files", 10);
+	maskImagesScrollView->setWidth(250);
+	maskImagesScrollView->setPosition(ofGetWidth() - guiWidth * 2, datMaskPanel->getHeight() + 10);
+	maskImagesScrollView->onScrollViewEvent(this, &ofApp::clickOnMaskImageButton);
+	maskDirectory.open("images/masks");
+	maskDirectory.listDir();
+	for (int i = 0; i < maskDirectory.size(); i++) {
+		maskImagesScrollView->add(maskDirectory.getName(i));
+	}
+	
 }
 
 void ofApp::saveCurrentImage() {
@@ -652,10 +673,8 @@ void ofApp::saveCurrentImage() {
 	
 }
 
-bool ofApp::clickOnMaskImageButton(const void* sender) {
-	ofParameter<bool>* button = (ofParameter<bool>*)sender;
-	loadMask(button->getName());
-	return true;
+void ofApp::clickOnMaskImageButton(ofxDatGuiScrollViewEvent e) {
+	loadMask(e.target->getName());
 }
 
 void ofApp::maskToolToggleClicked(ofxDatGuiButtonEvent e) {
@@ -665,6 +684,10 @@ void ofApp::maskToolToggleClicked(ofxDatGuiButtonEvent e) {
 	else {
 		currentMouseMode = MouseMode::Default;
 	}
+}
+
+void ofApp::brushTypeSelected(ofxDatGuiDropdownEvent e) {
+	currentBrushMode = (BrushMode)e.child;
 }
 
 void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMode mode, int value) {
@@ -747,7 +770,8 @@ void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY) {
 	else {
 		brushSize = max(0, brushSize - 1);
 	}
-	maskBrushSizeSlider = brushSize;
+	//maskBrushSizeSlider = brushSize;
+	datMaskPanel->getSlider(BRUSHSIZESLIDERTITLE)->setValue(brushSize);
 }
 
 //--------------------------------------------------------------

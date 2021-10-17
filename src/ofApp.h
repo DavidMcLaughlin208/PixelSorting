@@ -33,7 +33,8 @@ class ofApp : public ofBaseApp{
 
 		enum class BrushMode {
 			Circle,
-			Square
+			Square,
+			ClickAndDrag
 		};
 
 
@@ -49,7 +50,8 @@ class ofApp : public ofBaseApp{
 		void selectParameterRadioButton(const void* sender);
 		bool clickedOnImageButton(const void* sender);
 		void maskToolToggleClicked(ofxDatGuiButtonEvent e);
-		bool clickOnMaskImageButton(const void* sender);
+		void clickOnMaskImageButton(ofxDatGuiScrollViewEvent e);
+		void brushTypeSelected(ofxDatGuiDropdownEvent e);
 		void applyBrushStroke(int x, int y, int size, ofApp::BrushMode mode, int value);
 		bool withinMaskBounds(int x, int y);
 		bool withinUnrotatedImageBounds(int x, int y);
@@ -85,8 +87,13 @@ class ofApp : public ofBaseApp{
 		static std::string USEMASKTITLE;
 		static std::string MASKOPACITYTITLE;
 		static std::string DRAWMASKTOOLTITLE;
+		static std::string BRUSHSIZESLIDERTITLE;
+		static std::string CIRCLE;
+		static std::string SQUARE;
+		static std::string CLICKANDDRAG;
 		
-		ofDirectory directory;
+		ofDirectory imageDirectory;
+		ofDirectory maskDirectory;
 		ofImage image;
 		int unrotatedWidth;
 		int unrotatedHeight;
@@ -168,4 +175,6 @@ class ofApp : public ofBaseApp{
 
 		//ofxDatGui
 		ofxDatGui* datMaskPanel;
+		ofxDatGuiScrollView* maskImagesScrollView;
+		vector<string> brushTypeOptions;
 };
