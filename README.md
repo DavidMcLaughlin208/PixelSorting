@@ -55,15 +55,15 @@ In the future I would like to add the feature of sorting the video in segments a
 </details>
 
 ### Remaining items before initial release
-  * Filter image and video folders
-  * Determine when video/image formats can be supported
-  * Allow saving of images and videos to desired ouput format
+  * Manually test all of the file formats allowed by the relevant image/videos libraries being used
+  * Allow saving of videos to desired ouput format
   * Allow customization on max window/image display size
   * Refine UI and reduce space taken
-  * Write documentation and create walkthrough video
+  * Increase scroll view scroll speed
   * Include default images/videos for testing
-  * Improve performance of mask brush and implement Click and Drag brush mode
-
+  * Update window title and add toolbar image
+  * Test on mac
+  * Write documentation and create walkthrough video
 
 ### Todo List
 

@@ -194,36 +194,37 @@ void ofApp::setup() {
 
 	brushTypeOptions = { CIRCLE, SQUARE, CLICKANDDRAG };
 	sortingParameterOptions = { BRIGHTNESS, HUE, SATURATION };
-	setupDatGui();
-
+	
 	// Video codecs included in K-Lite codec pack for windows: https://codecguide.com/download_kl.htm
 	// AVI, MKV, MP4, FLV, MPEG, MOV, TS, M2TS, WMV, RM, RMVB, OGM, WebM
-	videoExtensions.insert(".avi");
-	videoExtensions.insert(".mkv");
-	videoExtensions.insert(".mp4");
-	videoExtensions.insert(".flv");
-	videoExtensions.insert(".mpeg");
-	videoExtensions.insert(".mov");
-	videoExtensions.insert(".ts");
-	videoExtensions.insert(".m2ts");
-	videoExtensions.insert(".wmv");
-	videoExtensions.insert(".rm");
-	videoExtensions.insert(".rmvb");
-	videoExtensions.insert(".ogm");
-	videoExtensions.insert(".webm");
+	videoExtensions.push_back("avi");
+	videoExtensions.push_back("mkv");
+	videoExtensions.push_back("mp4");
+	videoExtensions.push_back("flv");
+	videoExtensions.push_back("mpeg");
+	videoExtensions.push_back("mov");
+	videoExtensions.push_back("ts");
+	videoExtensions.push_back("m2ts");
+	videoExtensions.push_back("wmv");
+	videoExtensions.push_back("rm");
+	videoExtensions.push_back("rmvb");
+	videoExtensions.push_back("ogm");
+	videoExtensions.push_back("webm");
 
 	// ofImage uses freeImage library inder the hood. List of allowed extensions here:
 	// https://freeimage.sourceforge.io/users.html
-	imageExtensions.insert(".png");
-	imageExtensions.insert(".jpg");
-	imageExtensions.insert(".jpeg");
-	imageExtensions.insert(".jp2");
-	imageExtensions.insert(".bmp");
-	imageExtensions.insert(".tif");
-	imageExtensions.insert(".tiff");
-	imageExtensions.insert(".tga");
-	imageExtensions.insert(".pcx");
-	imageExtensions.insert(".ico");
+	imageExtensions.push_back("png");
+	imageExtensions.push_back("jpg");
+	imageExtensions.push_back("jpeg");
+	imageExtensions.push_back("jp2");
+	imageExtensions.push_back("bmp");
+	imageExtensions.push_back("tif");
+	imageExtensions.push_back("tiff");
+	imageExtensions.push_back("tga");
+	imageExtensions.push_back("pcx");
+	imageExtensions.push_back("ico");
+
+	setupDatGui();
 
 	sortParameterTable.insert(std::pair<std::string, SortParameter>(BRIGHTNESS, SortParameter::Brightness));
 	sortParameterTable.insert(std::pair<std::string, SortParameter>(HUE, SortParameter::Hue));
@@ -451,8 +452,8 @@ void ofApp::draw() {
 
 void ofApp::loadMask(std::string fileName) {
 	ofFilePath filePath;
-	std::string extension = "." + filePath.getFileExt(fileName);
-	if (imageExtensions.find(extension) != imageExtensions.end()) {
+	std::string extension = filePath.getFileExt(fileName);
+	if (std::find(imageExtensions.begin(), imageExtensions.end(), extension) != imageExtensions.end()) {
 		mask.clear();
 		mask.load("images/masks/" + fileName);
 		mask.setImageType(OF_IMAGE_COLOR_ALPHA);
@@ -478,11 +479,11 @@ void ofApp::loadImage(std::string fileName) {
 	videoPlayer.close();
 	image.clear();
 	ofFilePath filePath;
-	std::string extension = "." + filePath.getFileExt(fileName);
+	std::string extension = filePath.getFileExt(fileName);
 	std::transform(extension.begin(), extension.end(), extension.begin(),
 		[](unsigned char c) { return std::tolower(c); });
 
-	if (imageExtensions.find(extension) != imageExtensions.end()) {
+	if (std::find(imageExtensions.begin(), imageExtensions.end(), extension) != imageExtensions.end()) {
 		image.load("images/" + fileName);
 		image.setImageType(OF_IMAGE_COLOR_ALPHA);
 		currentMode = Mode::Image;
@@ -492,7 +493,7 @@ void ofApp::loadImage(std::string fileName) {
 		paddingAddedToImage = false;
 		currentImageAngle = 0;
 	}
-	else if (videoExtensions.find(extension) != videoExtensions.end()) {
+	else if (std::find(videoExtensions.begin(), videoExtensions.end(), extension) != videoExtensions.end()) {
 		if (videoPlayer.isLoaded()) {
 			videoPlayer.close();
 		}
@@ -617,8 +618,14 @@ void ofApp::setupDatGui() {
 	imageScrollView->setPosition(ofGetWidth() - guiWidth * 2, datImagePanel->getHeight() + 10);
 	imageScrollView->onScrollViewEvent(this, &ofApp::clickOnImageButton);
 	imageDirectory.open("images");
-	imageDirectory.listDir();
-	for (int i = 0; i < imageDirectory.size(); i++) {
+	for (int i = 0; i < imageExtensions.size(); i++) {
+		imageDirectory.allowExt(imageExtensions[i]);
+	}
+	for (int i = 0; i < videoExtensions.size(); i++) {
+		imageDirectory.allowExt(videoExtensions[i]);
+	}
+	size_t dirSize = imageDirectory.listDir();
+	for (int i = 0; i < dirSize; i++) {
 		imageScrollView->add(imageDirectory.getName(i));
 		imageScrollView->getItemAtIndex(i)->setLabelUpperCase(false);
 	}
@@ -642,8 +649,11 @@ void ofApp::setupDatGui() {
 	maskImagesScrollView->setPosition(ofGetWidth() - guiWidth, datMaskPanel->getHeight() + 10);
 	maskImagesScrollView->onScrollViewEvent(this, &ofApp::clickOnMaskImageButton);
 	maskDirectory.open("images/masks");
-	maskDirectory.listDir();
-	for (int i = 0; i < maskDirectory.size(); i++) {
+	for (int i = 0; i < imageExtensions.size(); i++) {
+		maskDirectory.allowExt(imageExtensions[i]);
+	}
+	size_t maskDirSize = maskDirectory.listDir();
+	for (int i = 0; i < maskDirSize; i++) {
 		maskImagesScrollView->add(maskDirectory.getName(i));
 		maskImagesScrollView->getItemAtIndex(i)->setLabelUpperCase(false);
 	}

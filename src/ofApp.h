@@ -138,8 +138,8 @@ class ofApp : public ofBaseApp{
 		std::chrono::steady_clock::time_point timeStart = std::chrono::high_resolution_clock::now();
 		std::chrono::steady_clock::time_point timeEnd = std::chrono::high_resolution_clock::now();
 
-		std::set<std::string> videoExtensions;
-		std::set<std::string> imageExtensions;
+		std::vector<std::string> videoExtensions;
+		std::vector<std::string> imageExtensions;
 
 		int maxWidth = 1280;
 		int maxHeight = 800;
