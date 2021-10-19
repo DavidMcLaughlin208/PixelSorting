@@ -59,7 +59,7 @@ In the future I would like to add the feature of sorting the video in segments a
   * Allow saving of videos to desired ouput format
   * Allow customization on max window/image display size
   * Refine UI and reduce space taken
-  * Increase scroll view scroll speed
+  * Add arrows to indicate angle
   * Include default images/videos for testing
   * Update window title and add toolbar image
   * Test on mac
