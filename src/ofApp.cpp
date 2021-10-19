@@ -196,12 +196,34 @@ void ofApp::setup() {
 	sortingParameterOptions = { BRIGHTNESS, HUE, SATURATION };
 	setupDatGui();
 
+	// Video codecs included in K-Lite codec pack for windows: https://codecguide.com/download_kl.htm
+	// AVI, MKV, MP4, FLV, MPEG, MOV, TS, M2TS, WMV, RM, RMVB, OGM, WebM
+	videoExtensions.insert(".avi");
+	videoExtensions.insert(".mkv");
 	videoExtensions.insert(".mp4");
+	videoExtensions.insert(".flv");
+	videoExtensions.insert(".mpeg");
 	videoExtensions.insert(".mov");
+	videoExtensions.insert(".ts");
+	videoExtensions.insert(".m2ts");
+	videoExtensions.insert(".wmv");
+	videoExtensions.insert(".rm");
+	videoExtensions.insert(".rmvb");
+	videoExtensions.insert(".ogm");
+	videoExtensions.insert(".webm");
 
+	// ofImage uses freeImage library inder the hood. List of allowed extensions here:
+	// https://freeimage.sourceforge.io/users.html
 	imageExtensions.insert(".png");
 	imageExtensions.insert(".jpg");
 	imageExtensions.insert(".jpeg");
+	imageExtensions.insert(".jp2");
+	imageExtensions.insert(".bmp");
+	imageExtensions.insert(".tif");
+	imageExtensions.insert(".tiff");
+	imageExtensions.insert(".tga");
+	imageExtensions.insert(".pcx");
+	imageExtensions.insert(".ico");
 
 	sortParameterTable.insert(std::pair<std::string, SortParameter>(BRIGHTNESS, SortParameter::Brightness));
 	sortParameterTable.insert(std::pair<std::string, SortParameter>(HUE, SortParameter::Hue));
@@ -457,6 +479,8 @@ void ofApp::loadImage(std::string fileName) {
 	image.clear();
 	ofFilePath filePath;
 	std::string extension = "." + filePath.getFileExt(fileName);
+	std::transform(extension.begin(), extension.end(), extension.begin(),
+		[](unsigned char c) { return std::tolower(c); });
 
 	if (imageExtensions.find(extension) != imageExtensions.end()) {
 		image.load("images/" + fileName);
@@ -491,9 +515,10 @@ void ofApp::loadImage(std::string fileName) {
 		unrotatedHeight = image.getHeight();
 		paddingAddedToImage = false;
 		currentImageAngle = 0;
+		ofFilePath filePath;
 
 		float fps = videoPlayer.getTotalNumFrames() / videoPlayer.getDuration();
-		videoWriter = cv::VideoWriter("data/images/effect.mp4", cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(image.getWidth(), image.getHeight()), true);
+		videoWriter = cv::VideoWriter("data/images/" + getTimeStampedFileName(fileName), cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(image.getWidth(), image.getHeight()), true);
 		currentMode = Mode::Video;
 	}
 	else {
@@ -627,10 +652,6 @@ void ofApp::setupDatGui() {
 
 void ofApp::saveCurrentImage(ofxDatGuiButtonEvent e) {
 	if (image.isAllocated()) {
-		ofFilePath filePath;
-		std::string fileName = filePath.getBaseName(currentFileName);
-		std::string extension = "." + filePath.getFileExt(currentFileName);
-		std::string fullName = fileName + "1" + extension;
 		ofPixels copy;
 		copy.allocate(imagePixels.getWidth(), imagePixels.getHeight(), imagePixels.getImageType());
 		imagePixels.pasteInto(copy, 0, 0);
@@ -640,12 +661,51 @@ void ofApp::saveCurrentImage(ofxDatGuiButtonEvent e) {
 		imagePixels.crop(originalImageX, originalImageY, unrotatedWidth, unrotatedHeight);
 		image.resize(imagePixels.getWidth(), imagePixels.getHeight());
 		image.setFromPixels(imagePixels);
+		std::string fullName = getTimeStampedFileName(currentFileName);
 		image.save("images/" + fullName);
 		currentFileName = fullName;
 		imagePixels = copy;
 		image.setFromPixels(imagePixels);
 	}
-	
+}
+
+std::string ofApp::getTimeStampedFileName(std::string filename) {
+	ofFilePath filePath;
+	std::string baseName = filePath.getBaseName(filename);
+	std::string extension = "." + filePath.getFileExt(filename);
+	bool alreadyHasDate = true;
+	int fileNameLength = static_cast<int>(baseName.length());
+	for (int i = 0; i < 14; i++) {
+		int index = fileNameLength - i - 1;
+		if (index < 0) {
+			alreadyHasDate = false;
+			break;
+		}
+		unsigned char c = baseName.at(index);
+		if (!isdigit(c)) {
+			alreadyHasDate = false;
+			break;
+		}
+	}
+	alreadyHasDate = alreadyHasDate && baseName.at(max(fileNameLength - 15, 0)) == '-';
+
+	if (alreadyHasDate) {
+		baseName = baseName.substr(0, baseName.length() - 15);
+	}
+	return baseName + "-" + datetime() + extension;
+}
+
+std::string ofApp::datetime()
+{
+	time_t rawtime;
+	struct tm* timeinfo;
+	char buffer[80];
+
+	time(&rawtime);
+	timeinfo = localtime(&rawtime);
+
+	strftime(buffer, 80, "%Y%m%d%H%M%S", timeinfo);
+	return std::string(buffer);
 }
 
 void ofApp::clickOnMaskImageButton(ofxDatGuiScrollViewEvent e) {
@@ -789,10 +849,10 @@ void ofApp::mouseReleased(int x, int y, int button){
 	int value = 255 * abs(button - 2) / 2;
 	if (currentMouseMode == MouseMode::MaskDraw && withinUnrotatedImageBounds(x, y)) {
 		if (currentBrushMode == BrushMode::ClickAndDrag) {
-			int minX = min(clickedX, x);
-			int minY = min(clickedY, y);
-			int maxX = max(clickedX, x);
-			int maxY = max(clickedY, y);
+			int minX = min(clickedX, x) / currentRatio;
+			int minY = min(clickedY, y) / currentRatio;
+			int maxX = max(clickedX, x) / currentRatio;
+			int maxY = max(clickedY, y) / currentRatio;
 			for (int row = minY; row < maxY; row++) {
 				for (int col = minX; col < maxX; col++) {
 					if (withinMaskBounds(col, row)) {

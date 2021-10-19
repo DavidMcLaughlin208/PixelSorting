@@ -66,6 +66,8 @@ class ofApp : public ofBaseApp{
 		void setupDatGui();
 
 		void saveCurrentImage(ofxDatGuiButtonEvent e);
+		std::string getTimeStampedFileName(std::string filename);
+		std::string datetime();
 
 		void keyPressed(int key);
 		void keyReleased(int key);
