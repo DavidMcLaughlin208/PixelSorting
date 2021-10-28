@@ -242,6 +242,21 @@ void ofApp::update() {
 	maskOpacity = maskOpacitySlider->getValue() * 255;
 	brushSize = brushSizeSlider->getValue();
 	useMask = useMaskToggle->getChecked();
+
+
+	// This should be delegated to a watcher thread at some point
+	if (directoryRefreshCounter >= 100) {
+		if (imageDirectory.listDir() != imageDirCount) {
+			populateImageDir(imageDirectory, imageScrollView);
+			imageDirCount = imageDirectory.listDir();
+		}
+		if (maskDirectory.listDir() != maskDirCount) {
+			populateImageDir(maskDirectory, maskImagesScrollView);
+			maskDirCount = maskDirectory.listDir();
+		}
+		directoryRefreshCounter = 0;
+	}
+	directoryRefreshCounter++;
 	if (started) {
 		vector<std::thread> threadList;
 		for (int i = 0; i < threadCount; i++) {
@@ -312,11 +327,10 @@ void ofApp::update() {
 
 // Code adapted to work with OF pulled from here: https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c/33564950#33564950
 void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
-	std::chrono::steady_clock::time_point rotateStart = std::chrono::high_resolution_clock::now();
-
 	if (angle == 0) {
 		return;
 	}
+	std::chrono::steady_clock::time_point rotateStart = std::chrono::high_resolution_clock::now();
 	int size = image.getWidth() * image.getHeight();
 	int bpp = imagePixels.getBytesPerPixel();
 	cv::Mat src;
@@ -519,7 +533,7 @@ void ofApp::loadImage(std::string fileName) {
 		ofFilePath filePath;
 
 		float fps = videoPlayer.getTotalNumFrames() / videoPlayer.getDuration();
-		videoWriter = cv::VideoWriter("data/images/" + getTimeStampedFileName(fileName), cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(image.getWidth(), image.getHeight()), true);
+		videoWriter = cv::VideoWriter("data/images/" + getTimeStampedFileName(fileName, ".mp4"), cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(image.getWidth(), image.getHeight()), true);
 		currentMode = Mode::Video;
 	}
 	else {
@@ -597,6 +611,7 @@ void ofApp::resetGuiPosition() {
 }
 
 void ofApp::setupDatGui() {
+	// Image Panel
 	datImagePanel = new ofxDatGui(ofGetWidth() - guiWidth * 2, 10);
 	datImagePanel->setWidth(guiWidth);
 	datImagePanel->addHeader("Image Sorting Controls");
@@ -613,7 +628,7 @@ void ofApp::setupDatGui() {
 	angleSlider->setPrecision(0);
 	threadCountSlider = datImagePanel->addSlider(THREADCOUNTSLIDERTITLE, 1, 30, 17);
 	datImagePanel->addLabel("Load Image");
-	imageScrollView = new ofxDatGuiScrollView("Mask Image Files", (ofGetHeight() - datImagePanel->getHeight()) / 26 - 1);
+	imageScrollView = new ofxDatGuiScrollView("Image/Video Files", (ofGetHeight() - datImagePanel->getHeight()) / 26 - 1);
 	imageScrollView->setWidth(guiWidth);
 	imageScrollView->setPosition(ofGetWidth() - guiWidth * 2, datImagePanel->getHeight() + 10);
 	imageScrollView->onScrollViewEvent(this, &ofApp::clickOnImageButton);
@@ -624,12 +639,10 @@ void ofApp::setupDatGui() {
 	for (int i = 0; i < videoExtensions.size(); i++) {
 		imageDirectory.allowExt(videoExtensions[i]);
 	}
-	size_t dirSize = imageDirectory.listDir();
-	for (int i = 0; i < dirSize; i++) {
-		imageScrollView->add(imageDirectory.getName(i));
-		imageScrollView->getItemAtIndex(i)->setLabelUpperCase(false);
-	}
+	populateImageDir(imageDirectory, imageScrollView);
+	imageDirCount = imageDirectory.listDir();
 
+	// Mask Panel
 	datMaskPanel = new ofxDatGui(ofGetWidth() - guiWidth, 10);
 	datMaskPanel->setWidth(guiWidth);
 	datMaskPanel->addHeader("Mask Controls");
@@ -652,12 +665,17 @@ void ofApp::setupDatGui() {
 	for (int i = 0; i < imageExtensions.size(); i++) {
 		maskDirectory.allowExt(imageExtensions[i]);
 	}
-	size_t maskDirSize = maskDirectory.listDir();
-	for (int i = 0; i < maskDirSize; i++) {
-		maskImagesScrollView->add(maskDirectory.getName(i));
-		maskImagesScrollView->getItemAtIndex(i)->setLabelUpperCase(false);
+	populateImageDir(maskDirectory, maskImagesScrollView);
+	maskDirCount = maskDirectory.listDir();
+}
+
+void ofApp::populateImageDir(ofDirectory dir, ofxDatGuiScrollView* scrollView) {
+	scrollView->clear();
+	size_t dirSize = dir.listDir();
+	for (int i = 0; i < dirSize; i++) {
+		scrollView->add(dir.getName(i));
+		scrollView->getItemAtIndex(i)->setLabelUpperCase(false);
 	}
-	
 }
 
 void ofApp::saveCurrentImage(ofxDatGuiButtonEvent e) {
@@ -671,7 +689,7 @@ void ofApp::saveCurrentImage(ofxDatGuiButtonEvent e) {
 		imagePixels.crop(originalImageX, originalImageY, unrotatedWidth, unrotatedHeight);
 		image.resize(imagePixels.getWidth(), imagePixels.getHeight());
 		image.setFromPixels(imagePixels);
-		std::string fullName = getTimeStampedFileName(currentFileName);
+		std::string fullName = getTimeStampedFileName(currentFileName, "");
 		image.save("images/" + fullName);
 		currentFileName = fullName;
 		imagePixels = copy;
@@ -679,7 +697,7 @@ void ofApp::saveCurrentImage(ofxDatGuiButtonEvent e) {
 	}
 }
 
-std::string ofApp::getTimeStampedFileName(std::string filename) {
+std::string ofApp::getTimeStampedFileName(std::string filename, std::string suppliedExtension) {
 	ofFilePath filePath;
 	std::string baseName = filePath.getBaseName(filename);
 	std::string extension = "." + filePath.getFileExt(filename);
@@ -702,7 +720,11 @@ std::string ofApp::getTimeStampedFileName(std::string filename) {
 	if (alreadyHasDate) {
 		baseName = baseName.substr(0, baseName.length() - 15);
 	}
-	return baseName + "-" + datetime() + extension;
+	std::string extensionToUse = extension;
+	if (suppliedExtension != "") {
+		extensionToUse = suppliedExtension;
+	}
+	return baseName + "-" + datetime() + extensionToUse;
 }
 
 std::string ofApp::datetime()
@@ -890,7 +912,8 @@ void ofApp::mouseExited(int x, int y){
 
 //--------------------------------------------------------------
 void ofApp::windowResized(int w, int h){
-
+	imageScrollView->setNumVisible((h - datImagePanel->getHeight()) / 26 - 1);
+	maskImagesScrollView->setNumVisible((h - datMaskPanel->getHeight()) / 26 - 1);
 }
 
 //--------------------------------------------------------------

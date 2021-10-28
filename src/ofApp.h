@@ -45,8 +45,6 @@ class ofApp : public ofBaseApp{
 		void rotateImage(int angle, bool paddingAddedToImage);
 		void saveFrameToVideo();
 		void start(ofxDatGuiButtonEvent e);
-		void selectParameterRadioButton(const void* sender);
-		bool clickedOnImageButton(const void* sender);
 		void maskToolToggleClicked(ofxDatGuiButtonEvent e);
 		void clickOnMaskImageButton(ofxDatGuiScrollViewEvent e);
 		void clickOnImageButton(ofxDatGuiScrollViewEvent e);
@@ -61,12 +59,13 @@ class ofApp : public ofBaseApp{
 
 		void loadMask(std::string fileName);
 		void loadImage(std::string fileName);
+		void populateImageDir(ofDirectory dir, ofxDatGuiScrollView* scrollView);
 
 		void resetGuiPosition();
 		void setupDatGui();
 
 		void saveCurrentImage(ofxDatGuiButtonEvent e);
-		std::string getTimeStampedFileName(std::string filename);
+		std::string getTimeStampedFileName(std::string filename, std::string suppliedExtension);
 		std::string datetime();
 
 		void keyPressed(int key);
@@ -101,6 +100,9 @@ class ofApp : public ofBaseApp{
 		
 		ofDirectory imageDirectory;
 		ofDirectory maskDirectory;
+		int directoryRefreshCounter = 0;
+		size_t imageDirCount = 0;
+		size_t maskDirCount = 0;
 		ofImage image;
 		int unrotatedWidth;
 		int unrotatedHeight;
