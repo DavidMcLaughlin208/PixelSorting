@@ -10,172 +10,183 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/videoio.hpp>
 
-class ofApp : public ofBaseApp{
+class ofApp : public ofBaseApp {
 
-	public:
-		enum class Mode {
-			None,
-			Image,
-			Video
-		};
-
-
-		enum class SortParameter {
-			Brightness,
-			Hue,
-			Saturation
-		};
-
-		enum class MouseMode {
-			Default,
-			MaskDraw
-		};
-
-		enum class BrushMode {
-			Circle,
-			Square,
-			ClickAndDrag
-		};
+public:
+	enum class Mode {
+		None,
+		Image,
+		Video
+	};
 
 
-		void setup();
-		void update();
-		void draw();
-		
-		void rotateImage(int angle, bool paddingAddedToImage);
-		void saveFrameToVideo();
-		void start(ofxDatGuiButtonEvent e);
-		void maskToolToggleClicked(ofxDatGuiButtonEvent e);
-		void clickOnMaskImageButton(ofxDatGuiScrollViewEvent e);
-		void clickOnImageButton(ofxDatGuiScrollViewEvent e);
-		void brushTypeSelected(ofxDatGuiDropdownEvent e);
-		void selectSortingParameter(ofxDatGuiDropdownEvent e);
-		void clearMask(ofxDatGuiButtonEvent e);
-		void applyBrushStroke(int x, int y, int size, ofApp::BrushMode mode, int value);
-		bool withinMaskBounds(int x, int y);
-		bool withinUnrotatedImageBounds(int x, int y);
-		bool cycleBrushMode();
-		virtual void mouseScrolled(int x, int y, float scrollX, float scrollY);
+	enum class SortParameter {
+		Brightness,
+		Hue,
+		Saturation
+	};
 
-		void loadMask(std::string fileName);
-		void loadImage(std::string fileName);
-		void populateImageDir(ofDirectory dir, ofxDatGuiScrollView* scrollView);
+	enum class MouseMode {
+		Default,
+		MaskDraw
+	};
 
-		void resetGuiPosition();
-		void setupDatGui();
+	enum class BrushMode {
+		Circle,
+		Square,
+		ClickAndDrag
+	};
 
-		void saveCurrentImage(ofxDatGuiButtonEvent e);
-		std::string getTimeStampedFileName(std::string filename, std::string suppliedExtension);
-		std::string datetime();
 
-		void keyPressed(int key);
-		void keyReleased(int key);
-		void mouseMoved(int x, int y );
-		void mouseDragged(int x, int y, int button);
-		void mousePressed(int x, int y, int button);
-		void mouseReleased(int x, int y, int button);
-		void mouseEntered(int x, int y);
-		void mouseExited(int x, int y);
-		void windowResized(int w, int h);
-		void dragEvent(ofDragInfo dragInfo);
-		void gotMessage(ofMessage msg);
+	void setup();
+	void update();
+	void draw();
 
-		static std::string BRIGHTNESS;
-		static std::string LIGHTNESS;
-		static std::string HUE;
-		static std::string SATURATION;
-		static std::string USEMASKTITLE;
-		static std::string MASKOPACITYTITLE;
-		static std::string DRAWMASKTOOLTITLE;
-		static std::string BRUSHSIZESLIDERTITLE;
-		static std::string CIRCLE;
-		static std::string SQUARE;
-		static std::string CLICKANDDRAG;
-		static std::string SORTBUTTONTITLE;
-		static std::string SAVEIMAGEBUTTONTITLE;
-		static std::string LOWERTHRESHOLDTITLE;
-		static std::string UPPERTHRESHOLDTITLE;
-		static std::string ANGLESLIDERTITLE;
-		static std::string THREADCOUNTSLIDERTITLE;
-		
-		ofDirectory imageDirectory;
-		ofDirectory maskDirectory;
-		int directoryRefreshCounter = 0;
-		size_t imageDirCount = 0;
-		size_t maskDirCount = 0;
-		ofImage image;
-		int unrotatedWidth;
-		int unrotatedHeight;
-		int xPadding;
-		int yPadding;
+	void drawArrows();
+	void createPolyLine();
 
-		ofImage mask;
-		bool useMask = false;
-		int maskOpacity = 110;
+	void rotateImage(int angle, bool paddingAddedToImage);
+	void saveFrameToVideo();
+	void start(ofxDatGuiButtonEvent e);
+	void maskToolToggleClicked(ofxDatGuiButtonEvent e);
+	void clickOnMaskImageButton(ofxDatGuiScrollViewEvent e);
+	void clickOnImageButton(ofxDatGuiScrollViewEvent e);
+	void brushTypeSelected(ofxDatGuiDropdownEvent e);
+	void selectSortingParameter(ofxDatGuiDropdownEvent e);
+	void clearMask(ofxDatGuiButtonEvent e);
+	void angleSliderChanged(ofxDatGuiSliderEvent e);
+	void applyBrushStroke(int x, int y, int size, ofApp::BrushMode mode, int value);
+	bool withinMaskBounds(int x, int y);
+	bool withinUnrotatedImageBounds(int x, int y);
+	bool cycleBrushMode();
+	virtual void mouseScrolled(int x, int y, float scrollX, float scrollY);
 
-		ofPixels imagePixels;
-		ofPixels maskPixels;
+	void loadMask(std::string fileName);
+	void loadImage(std::string fileName);
+	void populateImageDir(ofDirectory dir, ofxDatGuiScrollView* scrollView);
 
-		ofFbo imageFbo;
-		int guiWidth = 300;
+	void resetGuiPosition();
+	void setupDatGui();
 
-		int sortingIndex = 0;
-		bool started = false;
-		std::string currentFileName;
+	void saveCurrentImage(ofxDatGuiButtonEvent e);
+	std::string getTimeStampedFileName(std::string filename, std::string suppliedExtension);
+	std::string datetime();
 
-		// Sorting parameter
-		float threshold = 0.25f;
-		float upperThreshold = 0.8f;
-		int angle = 0;
-		int currentImageAngle = 0;
-		bool sortComplete = false;
-		bool paddingAddedToImage = false;
+	void keyPressed(int key);
+	void keyReleased(int key);
+	void mouseMoved(int x, int y);
+	void mouseDragged(int x, int y, int button);
+	void mousePressed(int x, int y, int button);
+	void mouseReleased(int x, int y, int button);
+	void mouseEntered(int x, int y);
+	void mouseExited(int x, int y);
+	void windowResized(int w, int h);
+	void dragEvent(ofDragInfo dragInfo);
+	void gotMessage(ofMessage msg);
 
-		int threadCount = 10;
-		int pixelTransferThreadCount = 14;
+	static std::string BRIGHTNESS;
+	static std::string LIGHTNESS;
+	static std::string HUE;
+	static std::string SATURATION;
+	static std::string MASKOPACITYTITLE;
+	static std::string DRAWMASKTOOLTITLE;
+	static std::string BRUSHSIZESLIDERTITLE;
+	static std::string CIRCLE;
+	static std::string SQUARE;
+	static std::string CLICKANDDRAG;
+	static std::string SORTBUTTONTITLE;
+	static std::string SAVEIMAGEBUTTONTITLE;
+	static std::string LOWERTHRESHOLDTITLE;
+	static std::string UPPERTHRESHOLDTITLE;
+	static std::string ANGLESLIDERTITLE;
+	static std::string THREADCOUNTSLIDERTITLE;
 
-		cv::VideoWriter videoWriter;
-		ofVideoPlayer videoPlayer;
+	ofDirectory imageDirectory;
+	ofDirectory maskDirectory;
+	int directoryRefreshCounter = 0;
+	size_t imageDirCount = 0;
+	size_t maskDirCount = 0;
+	ofImage image;
+	int unrotatedWidth;
+	int unrotatedHeight;
+	int xPadding;
+	int yPadding;
 
-		std::chrono::steady_clock::time_point timeStart = std::chrono::high_resolution_clock::now();
-		std::chrono::steady_clock::time_point timeEnd = std::chrono::high_resolution_clock::now();
+	ofImage mask;
+	bool useMask = false;
+	int maskOpacity = 110;
 
-		std::vector<std::string> videoExtensions;
-		std::vector<std::string> imageExtensions;
+	ofPixels imagePixels;
+	ofPixels maskPixels;
 
-		int maxWidth = 1280;
-		int maxHeight = 800;
-		float currentRatio = 1.0f;
+	ofFbo imageFbo;
+	int guiWidth = 300;
 
-		bool mouseDown = false;
-		int buttonDown = 0;
-		int clickedX;
-		int clickedY;
-		int dragCounter = 0;
+	ofFbo arrowsFbo;
+	int arrowDrawCounterReset = 200;
+	int arrowDrawCounter = 0;
+	int arrowDrawCounterStartFade = arrowDrawCounterReset / 2;
 
-		// Brush variables
-		int brushSize = 5;
-		BrushMode currentBrushMode = BrushMode::Circle;
+	int sortingIndex = 0;
+	bool started = false;
+	std::string currentFileName;
 
-		// Value by which to sort
-		Mode currentMode = Mode::None;
-		MouseMode currentMouseMode = MouseMode::Default;
-		std::map<std::string, SortParameter> sortParameterTable;
-		SortParameter currentlySelectedSortParameter = SortParameter::Brightness;
+	// Sorting parameter
+	float threshold = 0.25f;
+	float upperThreshold = 0.8f;
+	int angle = 0;
+	int currentImageAngle = 0;
+	bool sortComplete = false;
+	bool paddingAddedToImage = false;
 
-		//ofxDatGui
-		ofxDatGui* datImagePanel;
-		ofxDatGuiScrollView* imageScrollView;;
-		vector<string> sortingParameterOptions;
-		ofxDatGuiSlider* thresholdSlider;
-		ofxDatGuiSlider* upperThresholdSlider;
-		ofxDatGuiSlider* angleSlider;
-		ofxDatGuiSlider* threadCountSlider;
+	int threadCount = 10;
+	int pixelTransferThreadCount = 14;
 
-		ofxDatGui* datMaskPanel;
-		ofxDatGuiScrollView* maskImagesScrollView;
-		vector<string> brushTypeOptions;
-		ofxDatGuiSlider* maskOpacitySlider;
-		ofxDatGuiSlider* brushSizeSlider;
-		ofxDatGuiToggle* useMaskToggle;
+	cv::VideoWriter videoWriter;
+	ofVideoPlayer videoPlayer;
+
+	std::chrono::steady_clock::time_point timeStart = std::chrono::high_resolution_clock::now();
+	std::chrono::steady_clock::time_point timeEnd = std::chrono::high_resolution_clock::now();
+
+	std::vector<std::string> videoExtensions;
+	std::vector<std::string> imageExtensions;
+
+	int maxWidth = 1280;
+	int maxHeight = 800;
+	float currentRatio = 1.0f;
+
+	bool mouseDown = false;
+	int buttonDown = 0;
+	int clickedX;
+	int clickedY;
+	int dragCounter = 0;
+
+	// Brush variables
+	int brushSize = 5;
+	BrushMode currentBrushMode = BrushMode::Circle;
+
+	// Value by which to sort
+	Mode currentMode = Mode::None;
+	MouseMode currentMouseMode = MouseMode::Default;
+	std::map<std::string, SortParameter> sortParameterTable;
+	SortParameter currentlySelectedSortParameter = SortParameter::Brightness;
+
+	//ofxDatGui
+	ofxDatGui* datImagePanel;
+	ofxDatGuiScrollView* imageScrollView;;
+	vector<string> sortingParameterOptions;
+	ofxDatGuiSlider* thresholdSlider;
+	ofxDatGuiSlider* upperThresholdSlider;
+	ofxDatGuiSlider* angleSlider;
+	ofxDatGuiSlider* threadCountSlider;
+
+	ofxDatGui* datMaskPanel;
+	ofxDatGuiScrollView* maskImagesScrollView;
+	vector<string> brushTypeOptions;
+	ofxDatGuiSlider* maskOpacitySlider;
+	ofxDatGuiSlider* brushSizeSlider;
+	ofxDatGuiToggle* useMaskToggle;
+
+
+	ofColor averageColorOfImage;
 };

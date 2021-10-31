@@ -4,7 +4,6 @@ std::string ofApp::BRIGHTNESS = "Brightness";
 std::string ofApp::LIGHTNESS = "Lightness";
 std::string ofApp::HUE = "Hue";
 std::string ofApp::SATURATION = "Saturation";
-std::string ofApp::USEMASKTITLE = "Use Mask";
 std::string ofApp::MASKOPACITYTITLE = "Mask Opacity";
 std::string ofApp::DRAWMASKTOOLTITLE = "Draw Mask Tool";
 std::string ofApp::BRUSHSIZESLIDERTITLE = "Brush Size";
@@ -230,6 +229,8 @@ void ofApp::setup() {
 	sortParameterTable.insert(std::pair<std::string, SortParameter>(HUE, SortParameter::Hue));
 	sortParameterTable.insert(std::pair<std::string, SortParameter>(SATURATION, SortParameter::Saturation));
 
+	drawArrows();
+
 }
 
 //--------------------------------------------------------------
@@ -241,7 +242,6 @@ void ofApp::update() {
 	threadCount = threadCountSlider->getValue();
 	maskOpacity = maskOpacitySlider->getValue() * 255;
 	brushSize = brushSizeSlider->getValue();
-	useMask = useMaskToggle->getChecked();
 
 
 	// This should be delegated to a watcher thread at some point
@@ -434,6 +434,19 @@ void ofApp::draw() {
 
 		ofSetColor(255, 255, 255, 255);
 		imageFbo.draw(0, 0, wid, hei);
+
+
+		if (arrowDrawCounter > 0) {
+
+			ofPushMatrix();
+			ofTranslate(wid / 2, hei / 2);
+			ofRotate(angle);
+			int alpha = (int)min(255.0f, (float)arrowDrawCounter / (float)arrowDrawCounterStartFade * 255);
+			ofSetColor(255, 255, 255, alpha);
+			arrowsFbo.draw(-arrowsFbo.getWidth() / 2, -arrowsFbo.getHeight() / 2);
+			ofPopMatrix();
+			arrowDrawCounter--;
+		}
 	}
 	if (mask.isAllocated()) {
 		ofPushMatrix();
@@ -460,6 +473,7 @@ void ofApp::draw() {
 			break;
 		}
 	}
+
 	imageScrollView->draw();
 	maskImagesScrollView->draw();
 }
@@ -486,6 +500,7 @@ void ofApp::loadMask(std::string fileName) {
 			mask.setFromPixels(maskPixels);
 			maskPixels = mask.getPixels();
 		}
+		useMask = true;
 	}
 }
 
@@ -626,6 +641,7 @@ void ofApp::setupDatGui() {
 	upperThresholdSlider = datImagePanel->addSlider(UPPERTHRESHOLDTITLE, 0.0f, 1.0f, 0.80f);
 	angleSlider = datImagePanel->addSlider(ANGLESLIDERTITLE, 0, 359, 0);
 	angleSlider->setPrecision(0);
+	angleSlider->onSliderEvent(this, &ofApp::angleSliderChanged);
 	threadCountSlider = datImagePanel->addSlider(THREADCOUNTSLIDERTITLE, 1, 30, 17);
 	datImagePanel->addLabel("Load Image");
 	imageScrollView = new ofxDatGuiScrollView("Image/Video Files", (ofGetHeight() - datImagePanel->getHeight()) / 26 - 1);
@@ -646,7 +662,6 @@ void ofApp::setupDatGui() {
 	datMaskPanel = new ofxDatGui(ofGetWidth() - guiWidth, 10);
 	datMaskPanel->setWidth(guiWidth);
 	datMaskPanel->addHeader("Mask Controls");
-	useMaskToggle = datMaskPanel->addToggle(USEMASKTITLE);
 	ofxDatGuiButton* clearMaskButton = datMaskPanel->addButton("Clear Mask");
 	clearMaskButton->onButtonEvent(this, &ofApp::clearMask);
 	maskOpacitySlider = datMaskPanel->addSlider(MASKOPACITYTITLE, 0.0, 1.0, 0.4);
@@ -757,6 +772,10 @@ void ofApp::maskToolToggleClicked(ofxDatGuiButtonEvent e) {
 	}
 }
 
+void ofApp::angleSliderChanged(ofxDatGuiSliderEvent e) {
+	arrowDrawCounter = arrowDrawCounterReset;
+}
+
 void ofApp::brushTypeSelected(ofxDatGuiDropdownEvent e) {
 	currentBrushMode = (BrushMode)e.child;
 }
@@ -771,6 +790,7 @@ void ofApp::clearMask(ofxDatGuiButtonEvent e) {
 	mask.setColor(ofColor(0, 0, 0, 0));
 	mask.update();
 	maskPixels = mask.getPixels();
+	useMask = false;
 }
 
 void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMode mode, int value) {
@@ -790,6 +810,7 @@ void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMod
 				}
 				if (maskPixels.getColor(modX, modY).a != value) {
 					maskPixels.setColor(modX, modY, ofColor(value, value, value, value));
+					useMask = true;
 				}
 			}
 		}
@@ -815,6 +836,35 @@ bool ofApp::cycleBrushMode() {
 		currentBrushMode = BrushMode::Circle;
 	}
 	return true;
+}
+
+void ofApp::drawArrows() {
+	int lineSpacing = 40;
+	int arrowSpacing = 80;
+	int largerSide = 1440;
+	int linesToDraw = largerSide * 4 / lineSpacing;
+	int arrowWidth = 5;
+	arrowsFbo.clear();
+	arrowsFbo.allocate(1440, 1440);
+	arrowsFbo.begin();
+	ofClear(0);
+	ofSetColor(255);
+	ofPushMatrix();
+	ofRotate(90);
+	for (int i = 0; i < linesToDraw; i++) {
+		ofSetLineWidth(1.0f);
+		int x = -largerSide * 2 + lineSpacing * i;
+		ofDrawLine(x, -largerSide * 2, x, largerSide * 2);
+		int arrowsToDraw = largerSide * 4 / arrowSpacing;
+		for (int c = 0; c < arrowsToDraw; c++) {
+			int y = -largerSide * 2 + arrowSpacing * c;
+			ofSetLineWidth(5.0f);
+			ofDrawLine(x + arrowWidth, y + arrowWidth, x, y);
+			ofDrawLine(x - arrowWidth, y + arrowWidth, x, y);
+		}
+	}
+	ofPopMatrix();
+	arrowsFbo.end();
 }
 
 //--------------------------------------------------------------
