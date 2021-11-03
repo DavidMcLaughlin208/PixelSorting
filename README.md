@@ -54,15 +54,17 @@ In the future I would like to add the feature of sorting the video in segments a
 
 </details>
 
-### Remaining items before initial release
+If the following error is displayed when trying to launch the executable, then latest version of Microsoft c++ redistributable 2015-2019 needs to be installed:
+The code execution could not proceed because (LIBRARYNAME).dll was not found. Reinstalling the program may fix the problem.
+
+### Remaining items before initial release:
   * Manually test all of the file formats allowed by the relevant image/videos libraries being used
-  * Allow saving of videos to desired ouput format
   * Allow customization on max window/image display size
   * Refine UI and reduce space taken
   * Add arrows to indicate angle
-  * Include default images/videos for testing
+  * Include default video and mask for testing and demonstration purposes
   * Update window title and add toolbar image
-  * Test on mac
+  * See if I can get this to run on MacOS
   * Write documentation and create walkthrough video
 
 ### Todo List
@@ -72,12 +74,16 @@ In the future I would like to add the feature of sorting the video in segments a
   * Improve performance of mask drawing
   * Add ability to use any image as a mask with threshold customization
   * Write fragment shader to display what intervals will be sorted, dynamically as thresholds are modified
-  * Add color picker to modify mask color (default of white is not visible on white portions of images)
-* Improve UI clarity and usability: Redo UI in [ofxDatGui](https://github.com/braitsch/ofxDatGui)
+  * Add color pickers to modify mask color, angle arrows (default of white is not visible on white portions of images)
+* Improve UI clarity and usability
   * Add diagnostics and metrics to be shown in app (time taken, current frame for videos, what the application is currently doing, error messages, tooltips)
-  * Add ability to apply curves or easing functions to parameter values to change them over the course of a video sorting
-  * Allow for dynamic reload of image/video load buttons when contents of folder change
 * Add undo/redo functionality
+* Video improvements
+  * Allow saving video files to desired format (default is mp4 now regardless of input video format)
+  * Reduce size of sorted video files. It is a [known behavior](https://www.quora.com/Why-is-that-when-I-read-an-mp4-video-using-OpenCV-re-write-it-using-OpenCV-the-size-of-the-rewritten-video-is-greater-than-original-video) that VideoWriter will drastically increase size of videos
+  * Add ability to scrub through videos to select start and end frame, see what intervals will be sorted at that frame
+  * Break up video sorting to multiple files and concatenate them all at the end so in the case of any issues not all progress is lost
+  * Add ability to apply curves or easing functions to parameter values to change them over the course of a video sorting
 
 ### Examples
 

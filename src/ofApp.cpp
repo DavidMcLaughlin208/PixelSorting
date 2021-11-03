@@ -319,6 +319,7 @@ void ofApp::update() {
 		
 	}
 	imageScrollView->setPosition(ofGetWidth() - guiWidth * 2, datImagePanel->getHeight() + 10);
+	datImagePanel->setPosition(ofGetWidth() - guiWidth * 2, 10);
 	datMaskPanel->setPosition(ofGetWidth() - guiWidth, 10);
 	maskImagesScrollView->setPosition(ofGetWidth() - guiWidth, datMaskPanel->getHeight() + 10);
 	imageScrollView->update();
@@ -642,7 +643,9 @@ void ofApp::setupDatGui() {
 	angleSlider = datImagePanel->addSlider(ANGLESLIDERTITLE, 0, 359, 0);
 	angleSlider->setPrecision(0);
 	angleSlider->onSliderEvent(this, &ofApp::angleSliderChanged);
-	threadCountSlider = datImagePanel->addSlider(THREADCOUNTSLIDERTITLE, 1, 30, 17);
+	threadCountSlider = datImagePanel->addSlider(THREADCOUNTSLIDERTITLE, 1, 30, threadCount);
+	threadCountSlider->setPrecision(0);
+	threadCountSlider->setValue(threadCount);
 	datImagePanel->addLabel("Load Image");
 	imageScrollView = new ofxDatGuiScrollView("Image/Video Files", (ofGetHeight() - datImagePanel->getHeight()) / 26 - 1);
 	imageScrollView->setWidth(guiWidth);
@@ -843,7 +846,7 @@ void ofApp::drawArrows() {
 	int arrowSpacing = 80;
 	int largerSide = 1440;
 	int linesToDraw = largerSide * 4 / lineSpacing;
-	int arrowWidth = 5;
+	int arrowWidth = 7;
 	arrowsFbo.clear();
 	arrowsFbo.allocate(1440, 1440);
 	arrowsFbo.begin();
@@ -859,8 +862,7 @@ void ofApp::drawArrows() {
 		for (int c = 0; c < arrowsToDraw; c++) {
 			int y = -largerSide * 2 + arrowSpacing * c;
 			ofSetLineWidth(5.0f);
-			ofDrawLine(x + arrowWidth, y + arrowWidth, x, y);
-			ofDrawLine(x - arrowWidth, y + arrowWidth, x, y);
+			ofDrawTriangle(x, y, x + arrowWidth, y + arrowWidth, x - arrowWidth, y + arrowWidth);
 		}
 	}
 	ofPopMatrix();

@@ -139,7 +139,7 @@ public:
 	bool sortComplete = false;
 	bool paddingAddedToImage = false;
 
-	int threadCount = 10;
+	int threadCount = 17;
 	int pixelTransferThreadCount = 14;
 
 	cv::VideoWriter videoWriter;
