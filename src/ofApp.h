@@ -61,6 +61,8 @@ public:
 	bool cycleBrushMode();
 	virtual void mouseScrolled(int x, int y, float scrollX, float scrollY);
 
+	void calculateCurrentRatio(int width, int height);
+
 	void loadMask(std::string fileName);
 	void loadImage(std::string fileName);
 	void populateImageDir(ofDirectory dir, ofxDatGuiScrollView* scrollView);
@@ -111,6 +113,8 @@ public:
 	int unrotatedHeight;
 	int xPadding;
 	int yPadding;
+	int imageAnchorX = 0;
+	int imageAnchorY = 0;
 
 	ofImage mask;
 	bool useMask = false;
