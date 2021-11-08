@@ -61,7 +61,7 @@ struct SaturationComparator {
 	bool operator() (ofColor i, ofColor j) { return (i.getSaturation() < j.getSaturation()); }
 } saturationComparator;
 
-void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pixelsRef, ofPixels& maskPixelsRef, ofApp::SortParameter sortParameter, float threshold, float upperThreshold, bool useMask, float currentImageAngle, int xPadding, int yPadding) {
+void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pixelsRef, ofPixels& maskPixelsRef, ofApp::SortParameter sortParameter, float threshold, float upperThreshold, bool useMask, int maskThreshold, float currentImageAngle, int xPadding, int yPadding) {
 	int start = startIndex;
 	int end = (start + 1) * imageWidth;
 	int columnsOrRows = imageHeight;
@@ -120,7 +120,7 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 
 			
 			if (unpaddedX < maskPixelsRef.getWidth() && unpaddedX >= 0 && unpaddedY < maskPixelsRef.getHeight() && unpaddedY >= 0) {
-				maskApproved = maskPixelsRef.getColor(unpaddedX, unpaddedY).a > 0;
+				maskApproved = maskPixelsRef.getColor(unpaddedX, unpaddedY).a >= maskThreshold;
 			}
 		}
 
@@ -190,6 +190,7 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 //--------------------------------------------------------------
 void ofApp::setup() {
 	ofEnableAlphaBlending();
+	ofSetEscapeQuitsApp(false);
 
 	brushTypeOptions = { CIRCLE, SQUARE, CLICKANDDRAG };
 	sortingParameterOptions = { BRIGHTNESS, HUE, SATURATION };
@@ -225,22 +226,20 @@ void ofApp::setup() {
 
 	setupDatGui();
 
-	sortParameterTable.insert(std::pair<std::string, SortParameter>(BRIGHTNESS, SortParameter::Brightness));
-	sortParameterTable.insert(std::pair<std::string, SortParameter>(HUE, SortParameter::Hue));
-	sortParameterTable.insert(std::pair<std::string, SortParameter>(SATURATION, SortParameter::Saturation));
-
 	drawArrows();
-
+	/*ofSetWindowShape(ofGetScreenWidth(), ofGetScreenHeight() - 60);
+	ofSetWindowPosition(0, 30);*/
 }
 
 //--------------------------------------------------------------
 void ofApp::update() {
-	ofSetWindowTitle(ofToString(ofGetFrameRate()));
+	ofSetWindowTitle("Pixel Sortium - v" + ofToString(versionNumber) + " | FPS: " + ofToString(ofGetFrameRate()));
 	threshold = thresholdSlider->getValue();
 	upperThreshold = upperThresholdSlider->getValue();
 	angle = angleSlider->getValue();
 	threadCount = threadCountSlider->getValue();
 	maskOpacity = maskOpacitySlider->getValue() * 255;
+	//maskThreshold = maskThresholdSlider->getValue() * 255;
 	brushSize = brushSizeSlider->getValue();
 
 
@@ -260,7 +259,7 @@ void ofApp::update() {
 	if (started) {
 		vector<std::thread> threadList;
 		for (int i = 0; i < threadCount; i++) {
-			threadList.push_back(std::thread(pixelSortRow, sortingIndex, image.getWidth(), image.getHeight(), std::ref(imagePixels), std::ref(maskPixels), currentlySelectedSortParameter, threshold, upperThreshold, useMask, currentImageAngle, xPadding, yPadding));
+			threadList.push_back(std::thread(pixelSortRow, sortingIndex, image.getWidth(), image.getHeight(), std::ref(imagePixels), std::ref(maskPixels), currentlySelectedSortParameter, threshold, upperThreshold, useMask, maskThreshold, currentImageAngle, xPadding, yPadding));
 			sortingIndex += 1;
 
 			if (sortingIndex >= image.getHeight() - 1) {
@@ -443,7 +442,7 @@ void ofApp::draw() {
 			ofTranslate(wid / 2, hei / 2);
 			ofRotate(angle);
 			int alpha = (int)min(255.0f, (float)arrowDrawCounter / (float)arrowDrawCounterStartFade * 255);
-			ofSetColor(255, 255, 255, alpha);
+			ofSetColor(200, 200, 200, alpha);
 			arrowsFbo.draw(-arrowsFbo.getWidth() / 2, -arrowsFbo.getHeight() / 2);
 			ofPopMatrix();
 			arrowDrawCounter--;
@@ -487,9 +486,17 @@ void ofApp::loadMask(std::string fileName) {
 		mask.load("images/masks/" + fileName);
 		mask.setImageType(OF_IMAGE_COLOR_ALPHA);
 
-		mask.getPixels().setChannel(3, mask.getPixels().getChannel(0));
-		mask.update();
 		maskPixels = mask.getPixels();
+
+		for (int y = 0; y < mask.getHeight(); y++) {
+			for (int x = 0; x < mask.getWidth(); x++) {
+				ofColor pixel = maskPixels.getColor(x, y);
+				maskPixels.setColor(x, y, ofColor(255, 255, 255, pixel.getBrightness()));
+			}
+		}
+		mask.setFromPixels(maskPixels);
+		maskPixels = mask.getPixels();
+
 		if (mask.getWidth() < unrotatedWidth || mask.getHeight() < unrotatedHeight) {
 			ofPixels copy;
 			copy.allocate(maskPixels.getWidth(), maskPixels.getHeight(), OF_IMAGE_COLOR_ALPHA);
@@ -668,6 +675,7 @@ void ofApp::setupDatGui() {
 	ofxDatGuiButton* clearMaskButton = datMaskPanel->addButton("Clear Mask");
 	clearMaskButton->onButtonEvent(this, &ofApp::clearMask);
 	maskOpacitySlider = datMaskPanel->addSlider(MASKOPACITYTITLE, 0.0, 1.0, 0.4);
+	//maskThresholdSlider = datMaskPanel->addSlider("Mask Threshold", 0.0, 1.0, 1.0);
 	ofxDatGuiButton* maskBrushToggle = datMaskPanel->addButton(DRAWMASKTOOLTITLE);
 	maskBrushToggle->onButtonEvent(this, &ofApp::maskToolToggleClicked);
 	ofxDatGuiDropdown* brushTypeDropdown = datMaskPanel->addDropdown("Brush Type", brushTypeOptions);
@@ -812,7 +820,7 @@ void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMod
 					if (distance > (float) scaledSize) continue;
 				}
 				if (maskPixels.getColor(modX, modY).a != value) {
-					maskPixels.setColor(modX, modY, ofColor(value, value, value, value));
+					maskPixels.setColor(modX, modY, ofColor(255, 255, 255, value));
 					useMask = true;
 				}
 			}

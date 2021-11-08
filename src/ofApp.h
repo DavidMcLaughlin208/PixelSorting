@@ -115,6 +115,7 @@ public:
 	ofImage mask;
 	bool useMask = false;
 	int maskOpacity = 110;
+	int maskThreshold = 255;
 
 	ofPixels imagePixels;
 	ofPixels maskPixels;
@@ -168,7 +169,6 @@ public:
 	// Value by which to sort
 	Mode currentMode = Mode::None;
 	MouseMode currentMouseMode = MouseMode::Default;
-	std::map<std::string, SortParameter> sortParameterTable;
 	SortParameter currentlySelectedSortParameter = SortParameter::Brightness;
 
 	//ofxDatGui
@@ -186,7 +186,10 @@ public:
 	ofxDatGuiSlider* maskOpacitySlider;
 	ofxDatGuiSlider* brushSizeSlider;
 	ofxDatGuiToggle* useMaskToggle;
+	ofxDatGuiSlider* maskThresholdSlider;
 
 
 	ofColor averageColorOfImage;
+
+	float versionNumber = 0.10;
 };
