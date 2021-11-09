@@ -11,7 +11,10 @@ class InfoPanel {
 		ofxDatGuiLabel* usingMaskLabel;
 		ofxDatGuiSlider* progressBar;
 		ofxDatGuiLabel* estTimeToCompletion;
+		ofxDatGuiLabel* frameCount;
 		ofxDatGuiLabel* lastSortTimeTakenLabel;
+		vector<int> lastSortTime;
+		int sortTimeIndex = 0;
 
 	public:
 		void setup();
@@ -21,4 +24,7 @@ class InfoPanel {
 		void setUsingMask(bool useMask);
 		void setProgress(float percentage);
 		void sortTimeTaken(int milliseconds);
+		void setFrameCounter(int currentFrame, int totalFrames);
+		int getAverageSortTime();
+
 };

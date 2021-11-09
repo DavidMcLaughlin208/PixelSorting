@@ -11,10 +11,14 @@ void InfoPanel::setup() {
 	progressBar->setScale(1);
 	progressBar->setTheme(theme);
 	lastSortTimeTakenLabel = new ofxDatGuiLabel("Last Sort Duration: ");
+	frameCount = new ofxDatGuiLabel("Frame: 0 / 0");
+	estTimeToCompletion = new ofxDatGuiLabel("Est Time Remaining: ");
 	items.push_back(activeStatusLabel);
 	items.push_back(usingMaskLabel);
 	items.push_back(progressBar);
 	items.push_back(lastSortTimeTakenLabel);
+	items.push_back(frameCount);
+	items.push_back(estTimeToCompletion);
 	
 	for (int i = 0; i < items.size(); i++) {
 		items[i]->setLabelUpperCase(false);
@@ -34,7 +38,7 @@ void InfoPanel::setActiveStatus(std::string status) {
 }
 
 void InfoPanel::setUsingMask(bool useMask) {
-	usingMaskLabel->setLabel("Using Mask: " + ofToString(useMask));
+	usingMaskLabel->setLabel("Using Mask: " + useMask ? "True" : "False");
 }
 
 void InfoPanel::setProgress(float percentage) {
@@ -49,5 +53,32 @@ void InfoPanel::drawItems() {
 }
 
 void InfoPanel::sortTimeTaken(int milliseconds) {
+	
+	if (lastSortTime.size() >= 10) {
+		lastSortTime[sortTimeIndex] = milliseconds;
+		sortTimeIndex++;
+		sortTimeIndex = sortTimeIndex > 9 ? 0 : sortTimeIndex;
+	}
+	else {
+		lastSortTime.push_back(milliseconds);
+	}
 	lastSortTimeTakenLabel->setLabel("Last Sort Duration: " + ofToString(milliseconds) + "ms");
+}
+
+void InfoPanel::setFrameCounter(int currentFrame, int totalFrames) {
+	frameCount->setLabel("Frame " + ofToString(currentFrame) + "/" + ofToString(totalFrames));
+	int secondsRemaining = getAverageSortTime() * (totalFrames - currentFrame) / 1000;
+	int minutesRemaining = secondsRemaining / 60;
+	estTimeToCompletion->setLabel("Est Time Remaining: " + ofToString(minutesRemaining) + "m " + ofToString(secondsRemaining % 60) + "s");
+}
+
+int InfoPanel::getAverageSortTime() {
+	int sum = 0;
+	if (lastSortTime.size() == 0) {
+		return sum;
+	}
+	for (int i = 0; i < lastSortTime.size(); i++) {
+		sum += lastSortTime[i];
+	}
+	return (float) sum / (float) lastSortTime.size();
 }

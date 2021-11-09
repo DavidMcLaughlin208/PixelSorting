@@ -333,6 +333,7 @@ void ofApp::update() {
 					}
 					std::cout << "Starting frame " << videoPlayer.getCurrentFrame() << " out of " << videoPlayer.getTotalNumFrames() << std::endl;
 					timeStart = std::chrono::high_resolution_clock::now();
+					infoPanel->setFrameCounter(videoPlayer.getCurrentFrame(), videoPlayer.getTotalNumFrames());
 				}
 			}
 		}
@@ -673,8 +674,14 @@ void ofApp::start(ofxDatGuiButtonEvent e) {
 			paddingAddedToImage = true;
 			currentImageAngle = angle;
 		}
+		if (currentMode == Mode::Video) {
+			infoPanel->setFrameCounter(videoPlayer.getCurrentFrame(), videoPlayer.getTotalNumFrames());
+		}
 	}
 	else {
+		if (currentMode == Mode::Video) {
+			infoPanel->setFrameCounter(0, 0);
+		}
 		infoPanel->setActiveStatus(IDLE);
 		sortButton->setLabel(SORTBUTTONTITLE);
 		videoWriter.release();
