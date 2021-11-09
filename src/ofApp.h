@@ -62,6 +62,7 @@ public:
 	virtual void mouseScrolled(int x, int y, float scrollX, float scrollY);
 
 	void calculateCurrentRatio(int width, int height);
+	void calculateImageAnchorPoints(int unrotatedWidth, int unrotatedHeight, int maxWidth, int maxHeight, float ratio);
 
 	void loadMask(std::string fileName);
 	void loadImage(std::string fileName);

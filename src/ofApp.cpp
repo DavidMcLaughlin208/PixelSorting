@@ -226,13 +226,15 @@ void ofApp::setup() {
 
 	setupDatGui();
 
-	drawArrows();
+	
 	int windowWidth = ofGetScreenWidth();
 	int windowHeight = ofGetScreenHeight() - 60;
 	maxWidth = windowWidth - guiWidth * 2;
 	maxHeight = windowHeight;
 	ofSetWindowShape(windowWidth, windowHeight);
 	ofSetWindowPosition(0, 30);
+
+	drawArrows();
 }
 
 //--------------------------------------------------------------
@@ -442,13 +444,6 @@ void ofApp::draw() {
 		imageFbo.end();
 
 		ofSetColor(255, 255, 255, 255);
-		
-		if (wid < maxWidth) {
-			imageAnchorX = (maxWidth - wid) / 2;
-		}
-		if (hei < maxHeight) {
-			imageAnchorY = (maxHeight - hei) / 2;
-		}
 		imageFbo.draw(imageAnchorX, imageAnchorY, wid, hei);
 
 		if (arrowDrawCounter > 0) {
@@ -457,7 +452,9 @@ void ofApp::draw() {
 			ofRotate(angle);
 			int alpha = (int)min(255.0f, (float)arrowDrawCounter / (float)arrowDrawCounterStartFade * 255);
 			ofSetColor(200, 200, 200, alpha);
-			arrowsFbo.draw(-arrowsFbo.getWidth() / 2, -arrowsFbo.getHeight() / 2);
+			int arrowsWidth = arrowsFbo.getWidth() * 1.5;
+			int arrowsHeight = arrowsFbo.getHeight() * 1.5;
+			arrowsFbo.draw(-arrowsWidth / 2, -arrowsHeight / 2, arrowsWidth, arrowsHeight);
 			ofPopMatrix();
 			arrowDrawCounter--;
 		}
@@ -487,12 +484,20 @@ void ofApp::draw() {
 			break;
 		}
 	}
+	int scaledWidth = unrotatedWidth * currentRatio;
+	int scaledHeight = unrotatedHeight * currentRatio;
 	ofFill();
 	ofSetColor(50, 50, 50);
 	ofRect(0, 0, ofGetWidth(), imageAnchorY);
 	ofRect(0, 0, imageAnchorX, ofGetHeight());
-	ofRect(unrotatedWidth + imageAnchorX, 0, ofGetWidth() - unrotatedWidth + imageAnchorX, ofGetHeight());
-	ofRect(0, unrotatedHeight + imageAnchorY, maxWidth, ofGetHeight() - unrotatedHeight + imageAnchorY);
+	ofRect(scaledWidth + imageAnchorX, 0, ofGetWidth() - scaledWidth + imageAnchorX, ofGetHeight());
+	ofRect(0, scaledHeight + imageAnchorY, maxWidth, ofGetHeight() - scaledHeight + imageAnchorY);
+	ofNoFill();
+	ofSetColor(70, 70, 70);
+	ofRect(0, 0, ofGetWidth(), imageAnchorY);
+	ofRect(0, 0, imageAnchorX, ofGetHeight());
+	ofRect(scaledWidth + imageAnchorX, 0, ofGetWidth() - scaledWidth + imageAnchorX, ofGetHeight());
+	ofRect(0, scaledHeight + imageAnchorY, maxWidth, ofGetHeight() - scaledHeight + imageAnchorY);
 
 	imageScrollView->draw();
 	maskImagesScrollView->draw();
@@ -597,6 +602,7 @@ void ofApp::loadImage(std::string fileName) {
 	imageFbo.end();
 
 	calculateCurrentRatio(unrotatedWidth, unrotatedHeight);
+	calculateImageAnchorPoints(unrotatedWidth, unrotatedHeight, maxWidth, maxHeight, currentRatio);
 
 	if (mask.isAllocated()) {
 		if (mask.getWidth() < unrotatedWidth || mask.getHeight() < unrotatedHeight) {
@@ -875,7 +881,7 @@ void ofApp::drawArrows() {
 	int linesToDraw = largerSide * 4 / lineSpacing;
 	int arrowWidth = 7;
 	arrowsFbo.clear();
-	arrowsFbo.allocate(1440, 1440);
+	arrowsFbo.allocate(largerSide, largerSide);
 	arrowsFbo.begin();
 	ofClear(0);
 	ofSetColor(255);
@@ -905,6 +911,13 @@ void ofApp::calculateCurrentRatio(int width, int height) {
 	else {
 		currentRatio = 1.0f;
 	}
+}
+
+void ofApp::calculateImageAnchorPoints(int unrotatedWidth, int unrotatedHeight, int maxWidth, int maxHeight, float ratio) {
+	int scaledWidth = unrotatedWidth * ratio;
+	int scaledHeight = unrotatedHeight * ratio;
+	imageAnchorX = max(0, (maxWidth - scaledWidth) / 2);
+	imageAnchorY = max(0, (maxHeight - scaledHeight) / 2);
 }
 
 //--------------------------------------------------------------
@@ -1008,7 +1021,7 @@ void ofApp::windowResized(int w, int h){
 	maxWidth = w - guiWidth * 2;
 	maxHeight = h;
 	calculateCurrentRatio(unrotatedWidth, unrotatedHeight);
-	
+	calculateImageAnchorPoints(unrotatedWidth, unrotatedHeight, maxWidth, maxHeight, currentRatio);
 }
 
 //--------------------------------------------------------------
