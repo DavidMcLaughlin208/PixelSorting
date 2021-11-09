@@ -16,8 +16,8 @@ satyarth has already created a comprehensive [command line tool](https://github.
 I wanted to be able to easily apply pixel sorting to videos files but that would require a lot of manual work using existing tools. 
 
 Additionally, I wanted to implement multithreading on the pixel sort algorithm to speed it up which will be especially useful for sorting long videos.
-The single threaded python application can sort a 1920x1200 image with thresholds set from 0-1 (worst case scenario where every pixel is sorted) in about 9 seconds.
-This c++ multithreaded application can perform the same sort on the same image in 4.2 seconds while showing the image as its being sorted.
+The single threaded python application can sort a 1920x1200 image at a 45 degree angle with thresholds set from 0.25 - 0.8 (default parameters) in about 17 seconds.
+This c++ multithreaded application can perform the same sort on the same image in 4.5 seconds while showing the image as its being sorted and allowing for rapid iteration.
 
 I also wanted to created an application with a gui to give more immediate visual feedback to the user and add other tools such as mask drawing in app.
 
@@ -45,11 +45,11 @@ None of the above issues apply when sorting an image at 0 degree angle (default,
 
 ---
 
-When sorting images it is recommended to have at least 1GB of RAM. If sorting videos you may need significantly more RAM (4GB, 8GB depending on the size of the video file)
+When sorting images it is recommended to have at least 1GB of RAM (2GB for 4k images). If sorting videos you may need significantly more RAM (4GB, 8GB depending on the size of the video file)
 
-Sorted video files seem to be significantly larger in memory than the unsorted version of the video (6.7MB -> 70MB). This may be fixable by tweaking some OpenCV settings but will need to look into it.
+Sorted video files seem to be significantly larger in memory than the unsorted version of the video (6.7MB -> 70MB). This is known issue with OpenCV video writer although I plan to look into ways to minimize this increase in size.
 
-As of now a video file can only be sorted in one go, start to finish. If you computer shuts off, goes to sleep, or for any reason any issue occurs during the sorting, the whole new video file will be corrupted and the sorting process will need to restart (the original file will not be corrupted)
+As of now a video file can only be sorted in one go, start to finish (or until you press "Stop"). If you computer shuts off, goes to sleep, or for any reason any issue occurs during the sorting, the whole *new* video file will be corrupted and the sorting process will need to restart (the original file will not be corrupted)
 In the future I would like to add the feature of sorting the video in segments and stitching the together at the end so if any issue occurs it will be contained to the current segment.
 
 </details>
@@ -58,10 +58,8 @@ If the following error is displayed when trying to launch the executable, then l
 The code execution could not proceed because (LIBRARYNAME).dll was not found. Reinstalling the program may fix the problem.
 
 ### Remaining items before initial release:
-  * Manually test all of the file formats allowed by the relevant image/videos libraries being used
   * Include default video and mask for testing and demonstration purposes
   * Add icon: [Guide](https://forum.openframeworks.cc/t/how-to-get-rid-of-console-and-set-proper-app-icon/24227/2)
-  * See if I can get this to run on MacOS
   * Write documentation and create walkthrough video
 
 ### Todo List
@@ -72,9 +70,9 @@ The code execution could not proceed because (LIBRARYNAME).dll was not found. Re
   * Add ability to use any image as a mask with threshold customization
   * Write fragment shader to display what intervals will be sorted, dynamically as thresholds are modified
   * Add color pickers to modify mask color, angle arrows (default of white is not visible on white portions of images)
-  * Invert mask button
 * Improve UI clarity and usability
   * Add diagnostics and metrics to be shown in app (time taken, current frame for videos, what the application is currently doing, error messages, tooltips)
+  * Using mask, last sorting time, what its currently doing,  est time to completion, percentage complete
 * Add undo/redo functionality
 * Video improvements
   * Allow saving video files to desired format (default is mp4 now regardless of input video format)
@@ -82,9 +80,10 @@ The code execution could not proceed because (LIBRARYNAME).dll was not found. Re
   * Add ability to scrub through videos to select start and end frame, see what intervals will be sorted at that frame
   * Break up video sorting to multiple files and concatenate them all at the end so in the case of any issues not all progress is lost
   * Add ability to apply curves or easing functions to parameter values to change them over the course of a video sorting
+* Look into Mac and Linux support
 
 ### Examples
-
+![](media/GUIExample.png)
 ![](media/MultiSort.gif)
 ![](media/SortingOptions.gif)
 ![](media/SortedVideo.gif)

@@ -16,6 +16,7 @@ std::string ofApp::LOWERTHRESHOLDTITLE = "Lower Threshold";
 std::string ofApp::UPPERTHRESHOLDTITLE = "Upper Threshold";
 std::string ofApp::ANGLESLIDERTITLE = "Angle";
 std::string ofApp::THREADCOUNTSLIDERTITLE = "Thread Count";
+std::string ofApp::IDLE = "Idle";
 
 void transferFromPixelsToMat(ofPixels& pixelsRef, cv::Mat& matRef, int section, int sectionLength, bool endingSection, int width, int height) {
 	int bpp = pixelsRef.getBytesPerPixel();
@@ -153,6 +154,8 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 		}
 		endOfInterval = i - 1;
 
+		// TODO: Instead of copying pixels to a vector and then soritng and putting them back. 
+		// Look into extending ofPixels or some way to sort the pixels in place
 		vector<ofColor> intervalColors;
 		intervalColors.resize(endOfInterval - startOfInterval + 1);
 		for (int s = startOfInterval; s <= endOfInterval; s++) {
@@ -245,6 +248,7 @@ void ofApp::update() {
 	angle = angleSlider->getValue();
 	threadCount = threadCountSlider->getValue();
 	maskOpacity = maskOpacitySlider->getValue() * 255;
+	// Will add this back in later
 	//maskThreshold = maskThresholdSlider->getValue() * 255;
 	brushSize = brushSizeSlider->getValue();
 
@@ -263,6 +267,7 @@ void ofApp::update() {
 	}
 	directoryRefreshCounter++;
 	if (started) {
+		infoPanel->setActiveStatus("Sorting");
 		vector<std::thread> threadList;
 		for (int i = 0; i < threadCount; i++) {
 			threadList.push_back(std::thread(pixelSortRow, sortingIndex, image.getWidth(), image.getHeight(), std::ref(imagePixels), std::ref(maskPixels), currentlySelectedSortParameter, threshold, upperThreshold, useMask, maskThreshold, currentImageAngle, xPadding, yPadding));
@@ -271,10 +276,7 @@ void ofApp::update() {
 			if (sortingIndex >= image.getHeight() - 1) {
 				sortingIndex = 0;
 				sortComplete = true;
-				timeEnd = std::chrono::high_resolution_clock::now();
-
-				long timeTaken = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeStart).count();
-				std::cout << "Thread Count of " << threadCount << " took " << timeTaken << " milliseconds." << std::endl;
+				
 				break;
 			}
 		}
@@ -282,16 +284,26 @@ void ofApp::update() {
 			threadList[i].join();
 		}
 		image.setFromPixels(imagePixels);
+		if (sortComplete) {
+			infoPanel->setProgress(1);
+			timeEnd = std::chrono::high_resolution_clock::now();
 
-
+			long timeTaken = std::chrono::duration_cast<std::chrono::milliseconds>(timeEnd - timeStart).count();
+			std::cout << "Thread Count of " << threadCount << " took " << timeTaken << " milliseconds." << std::endl;
+			infoPanel->sortTimeTaken(timeTaken);
+		}
+		else {
+			infoPanel->setProgress((float)sortingIndex / (float)image.getHeight());
+		}
 
 		if (sortComplete) {
 			sortComplete = false;
 			if (currentMode == Mode::Image) {
 				started = false;
-				
+				sortButton->setLabel(SORTBUTTONTITLE);
 				image.setFromPixels(imagePixels);
 				//currentImageAngle = 0;
+				infoPanel->setActiveStatus(IDLE);
 			}
 			else if (currentMode == Mode::Video) {
 				saveFrameToVideo();
@@ -299,7 +311,9 @@ void ofApp::update() {
 					videoPlayer.close();
 					videoWriter.release();
 					started = false;
+					sortButton->setLabel(SORTBUTTONTITLE);
 					std::cout << "Completed sorting video" << std::endl;
+					infoPanel->setActiveStatus(IDLE);
 				}
 				else {
 					videoPlayer.nextFrame();
@@ -311,7 +325,9 @@ void ofApp::update() {
 					image.update();
 					currentImageAngle = 0;
 					if (currentImageAngle != angle) {
+						infoPanel->setActiveStatus("Rotating Image");
 						rotateImage(angle, false);
+						infoPanel->setActiveStatus("Sorting");
 						paddingAddedToImage = true;
 						currentImageAngle = angle;
 					}
@@ -329,6 +345,8 @@ void ofApp::update() {
 	maskImagesScrollView->setPosition(ofGetWidth() - guiWidth, datMaskPanel->getHeight() + 10);
 	imageScrollView->update();
 	maskImagesScrollView->update();
+	datImagePanel->update();
+	datMaskPanel->update();
 }
 
 // Code adapted to work with OF pulled from here: https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c/33564950#33564950
@@ -397,6 +415,7 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 }
 
 void ofApp::saveFrameToVideo() {
+	infoPanel->setActiveStatus("Saving Frame To Video");
 	if (currentImageAngle != 0) {
 		ofPixels copy;
 		copy.allocate(imagePixels.getWidth(), imagePixels.getHeight(), imagePixels.getImageType());
@@ -501,12 +520,15 @@ void ofApp::draw() {
 
 	imageScrollView->draw();
 	maskImagesScrollView->draw();
+
+	infoPanel->drawItems();
 }
 
 void ofApp::loadMask(std::string fileName) {
 	ofFilePath filePath;
 	std::string extension = filePath.getFileExt(fileName);
 	if (std::find(imageExtensions.begin(), imageExtensions.end(), extension) != imageExtensions.end()) {
+		infoPanel->setActiveStatus("Loading Mask");
 		mask.clear();
 		mask.load("images/masks/" + fileName);
 		mask.setImageType(OF_IMAGE_COLOR_ALPHA);
@@ -534,7 +556,9 @@ void ofApp::loadMask(std::string fileName) {
 			maskPixels = mask.getPixels();
 		}
 		useMask = true;
+		infoPanel->setUsingMask(useMask);
 	}
+	infoPanel->setActiveStatus(IDLE);
 }
 
 void ofApp::loadImage(std::string fileName) {
@@ -546,6 +570,7 @@ void ofApp::loadImage(std::string fileName) {
 		[](unsigned char c) { return std::tolower(c); });
 
 	if (std::find(imageExtensions.begin(), imageExtensions.end(), extension) != imageExtensions.end()) {
+		infoPanel->setActiveStatus("Loading Image");
 		image.load("images/" + fileName);
 		image.setImageType(OF_IMAGE_COLOR_ALPHA);
 		currentMode = Mode::Image;
@@ -558,6 +583,7 @@ void ofApp::loadImage(std::string fileName) {
 		imageAnchorY = 0;
 	}
 	else if (std::find(videoExtensions.begin(), videoExtensions.end(), extension) != videoExtensions.end()) {
+		infoPanel->setActiveStatus("Loading Video");
 		if (videoPlayer.isLoaded()) {
 			videoPlayer.close();
 		}
@@ -567,6 +593,7 @@ void ofApp::loadImage(std::string fileName) {
 		videoPlayer.load("images/" + fileName);
 		if (!videoPlayer.isLoaded()) {
 			// Display error message to user
+			infoPanel->setActiveStatus(IDLE);
 			return;
 		}
 		videoPlayer.firstFrame();
@@ -628,6 +655,8 @@ void ofApp::loadImage(std::string fileName) {
 	resetGuiPosition();
 	sortingIndex = 0;
 	started = false;
+	sortButton->setLabel(SORTBUTTONTITLE);
+	infoPanel->setActiveStatus(IDLE);
 }
 
 void ofApp::start(ofxDatGuiButtonEvent e) {
@@ -636,6 +665,8 @@ void ofApp::start(ofxDatGuiButtonEvent e) {
 	}
 	started = !started;
 	if (started) {
+		infoPanel->setActiveStatus("Sorting");
+		sortButton->setLabel("Stop");
 		timeStart = std::chrono::high_resolution_clock::now();
 		if (angle != currentImageAngle) {
 			rotateImage(angle - currentImageAngle, paddingAddedToImage);
@@ -644,6 +675,8 @@ void ofApp::start(ofxDatGuiButtonEvent e) {
 		}
 	}
 	else {
+		infoPanel->setActiveStatus(IDLE);
+		sortButton->setLabel(SORTBUTTONTITLE);
 		videoWriter.release();
 		videoPlayer.close();
 		image.clear();
@@ -663,7 +696,7 @@ void ofApp::setupDatGui() {
 	datImagePanel = new ofxDatGui(ofGetWidth() - guiWidth * 2, 10);
 	datImagePanel->setWidth(guiWidth);
 	datImagePanel->addHeader("Image Sorting Controls");
-	ofxDatGuiButton* sortButton = datImagePanel->addButton(SORTBUTTONTITLE);
+	sortButton = datImagePanel->addButton(SORTBUTTONTITLE);
 	sortButton->onButtonEvent(this, &ofApp::start);
 	ofxDatGuiButton* saveButton = datImagePanel->addButton(SAVEIMAGEBUTTONTITLE);
 	saveButton->onButtonEvent(this, &ofApp::saveCurrentImage);
@@ -703,7 +736,7 @@ void ofApp::setupDatGui() {
 	invertMaskButton->onButtonEvent(this, &ofApp::invertMask);
 	maskOpacitySlider = datMaskPanel->addSlider(MASKOPACITYTITLE, 0.0, 1.0, 0.4);
 	//maskThresholdSlider = datMaskPanel->addSlider("Mask Threshold", 0.0, 1.0, 1.0);
-	ofxDatGuiButton* maskBrushToggle = datMaskPanel->addButton(DRAWMASKTOOLTITLE);
+	maskBrushToggle = datMaskPanel->addButton(DRAWMASKTOOLTITLE);
 	maskBrushToggle->onButtonEvent(this, &ofApp::maskToolToggleClicked);
 	ofxDatGuiDropdown* brushTypeDropdown = datMaskPanel->addDropdown("Brush Type", brushTypeOptions);
 	brushTypeDropdown->onDropdownEvent(this, &ofApp::brushTypeSelected);
@@ -720,6 +753,10 @@ void ofApp::setupDatGui() {
 	}
 	populateImageDir(maskDirectory, maskImagesScrollView);
 	maskDirCount = maskDirectory.listDir();
+
+	
+	infoPanel = new InfoPanel();
+	infoPanel->setup();
 }
 
 void ofApp::populateImageDir(ofDirectory dir, ofxDatGuiScrollView* scrollView) {
@@ -732,7 +769,8 @@ void ofApp::populateImageDir(ofDirectory dir, ofxDatGuiScrollView* scrollView) {
 }
 
 void ofApp::saveCurrentImage(ofxDatGuiButtonEvent e) {
-	if (image.isAllocated()) {
+	if (image.isAllocated() && !started) {
+		infoPanel->setActiveStatus("Saving Image");
 		ofPixels copy;
 		copy.allocate(imagePixels.getWidth(), imagePixels.getHeight(), imagePixels.getImageType());
 		imagePixels.pasteInto(copy, 0, 0);
@@ -748,6 +786,7 @@ void ofApp::saveCurrentImage(ofxDatGuiButtonEvent e) {
 		imagePixels = copy;
 		image.setFromPixels(imagePixels);
 	}
+	infoPanel->setActiveStatus(IDLE);
 }
 
 std::string ofApp::getTimeStampedFileName(std::string filename, std::string suppliedExtension) {
@@ -803,9 +842,11 @@ void ofApp::clickOnImageButton(ofxDatGuiScrollViewEvent e) {
 
 void ofApp::maskToolToggleClicked(ofxDatGuiButtonEvent e) {
 	if (currentMouseMode != MouseMode::MaskDraw) {
+		maskBrushToggle->setBackgroundColor(ofColor(0, 166, 0));
 		currentMouseMode = MouseMode::MaskDraw;
 	}
 	else {
+		maskBrushToggle->setBackgroundColor(ofColor::fromHex(0x1A1A1A));
 		currentMouseMode = MouseMode::Default;
 	}
 }
@@ -829,6 +870,7 @@ void ofApp::clearMask(ofxDatGuiButtonEvent e) {
 	mask.update();
 	maskPixels = mask.getPixels();
 	useMask = false;
+	infoPanel->setUsingMask(useMask);
 }
 
 void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMode mode, int value) {
@@ -853,6 +895,7 @@ void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMod
 			}
 		}
 	}
+	infoPanel->setUsingMask(useMask);
 	mask.setFromPixels(maskPixels);
 	maskPixels = mask.getPixels();
 }
@@ -919,7 +962,7 @@ void ofApp::calculateImageAnchorPoints(int unrotatedWidth, int unrotatedHeight, 
 	int scaledWidth = unrotatedWidth * ratio;
 	int scaledHeight = unrotatedHeight * ratio;
 	imageAnchorX = max(0, (maxWidth - scaledWidth) / 2);
-	imageAnchorY = max(0, (maxHeight - scaledHeight) / 2);
+	imageAnchorY = max(0, (maxHeight - scaledHeight) / 2 + guiHeight);
 }
 
 void ofApp::invertMask(ofxDatGuiButtonEvent e) {
@@ -947,7 +990,15 @@ void ofApp::keyReleased(int key){
 
 //--------------------------------------------------------------
 void ofApp::mouseMoved(int x, int y ){
-
+	if (x > ofGetWidth() - guiWidth * 2) {
+		if (x < ofGetWidth() - guiWidth) {
+			datImagePanel->focus();
+		}
+		else {
+			datMaskPanel->focus();
+		}
+		
+	}
 }
 
 //--------------------------------------------------------------
@@ -1005,14 +1056,15 @@ void ofApp::mouseReleased(int x, int y, int button){
 			int maxY = max(clickedY, y) / currentRatio;
 			for (int row = minY; row < maxY; row++) {
 				for (int col = minX; col < maxX; col++) {
-					if (withinMaskBounds(col - imageAnchorX, row - imageAnchorY)) {
-						maskPixels.setColor(col - imageAnchorX, row - imageAnchorY, ofColor(value, value, value, value));
+					if (withinMaskBounds(col, row)) {
+						maskPixels.setColor(col - imageAnchorX, row - imageAnchorY, ofColor(255, 255, 255, value));
 					}
 				}
 			}
 			mask.setFromPixels(maskPixels);
 			maskPixels = mask.getPixels();
 			useMask = true;
+			infoPanel->setUsingMask(useMask);
 		}
 	}
 	mouseDown = false;
@@ -1034,9 +1086,10 @@ void ofApp::windowResized(int w, int h){
 	imageScrollView->setNumVisible((h - datImagePanel->getHeight()) / 26 - 1);
 	maskImagesScrollView->setNumVisible((h - datMaskPanel->getHeight()) / 26 - 1);
 	maxWidth = w - guiWidth * 2;
-	maxHeight = h;
+	maxHeight = h - guiHeight;
 	calculateCurrentRatio(unrotatedWidth, unrotatedHeight);
 	calculateImageAnchorPoints(unrotatedWidth, unrotatedHeight, maxWidth, maxHeight, currentRatio);
+	infoPanel->setItemPositions(0, 0, ofGetWidth() - guiWidth * 2);
 }
 
 //--------------------------------------------------------------

@@ -1,9 +1,9 @@
 #pragma once
 
 #include "ofMain.h"
-#include "ofxGui.h"
 #include "ofxOpenCv.h"
 #include "ofxDatGui.h"
+#include "InfoPanel.h"
 #include <vector>
 #include <string>
 #include <chrono>
@@ -18,7 +18,6 @@ public:
 		Image,
 		Video
 	};
-
 
 	enum class SortParameter {
 		Brightness,
@@ -104,6 +103,7 @@ public:
 	static std::string UPPERTHRESHOLDTITLE;
 	static std::string ANGLESLIDERTITLE;
 	static std::string THREADCOUNTSLIDERTITLE;
+	static std::string IDLE;
 
 	ofDirectory imageDirectory;
 	ofDirectory maskDirectory;
@@ -128,6 +128,7 @@ public:
 
 	ofFbo imageFbo;
 	int guiWidth = 300;
+	int guiHeight = 26;
 
 	ofFbo arrowsFbo;
 	int arrowDrawCounterReset = 200;
@@ -181,6 +182,7 @@ public:
 	ofxDatGui* datImagePanel;
 	ofxDatGuiScrollView* imageScrollView;;
 	vector<string> sortingParameterOptions;
+	ofxDatGuiButton* sortButton;
 	ofxDatGuiSlider* thresholdSlider;
 	ofxDatGuiSlider* upperThresholdSlider;
 	ofxDatGuiSlider* angleSlider;
@@ -194,7 +196,9 @@ public:
 	ofxDatGuiToggle* useMaskToggle;
 	ofxDatGuiSlider* maskThresholdSlider;
 	ofxDatGuiButton* invertMaskButton;
+	ofxDatGuiButton* maskBrushToggle;
 
+	InfoPanel* infoPanel;
 
 	ofColor averageColorOfImage;
 
