@@ -99,6 +99,4 @@ The code execution could not proceed because (LIBRARYNAME).dll was not found. Re
 
 ### Examples
 ![](media/GUIExample.PNG)
-![](media/MultiSort.gif)
-![](media/SortingOptions.gif)
 ![](media/SortedVideo.gif)
