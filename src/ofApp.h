@@ -47,6 +47,7 @@ public:
 	void rotateImage(int angle, bool paddingAddedToImage);
 	void saveFrameToVideo();
 	void start(ofxDatGuiButtonEvent e);
+	void revertChanges(ofxDatGuiButtonEvent e);
 	void maskToolToggleClicked(ofxDatGuiButtonEvent e);
 	void clickOnMaskImageButton(ofxDatGuiScrollViewEvent e);
 	void clickOnImageButton(ofxDatGuiScrollViewEvent e);

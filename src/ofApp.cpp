@@ -242,7 +242,7 @@ void ofApp::setup() {
 
 //--------------------------------------------------------------
 void ofApp::update() {
-	ofSetWindowTitle("Pixel Sortium - v" + ofToString(versionNumber) + " | FPS: " + ofToString(ofGetFrameRate()));
+	ofSetWindowTitle("Pixel Sortium - v" + ofToString(versionNumber) + " | FPS: " + ofToString(floor(ofGetFrameRate())));
 	threshold = thresholdSlider->getValue();
 	upperThreshold = upperThresholdSlider->getValue();
 	angle = angleSlider->getValue();
@@ -254,7 +254,7 @@ void ofApp::update() {
 
 
 	// This should be delegated to a watcher thread at some point
-	if (directoryRefreshCounter >= 100) {
+	if (directoryRefreshCounter >= 300) {
 		if (imageDirectory.listDir() != imageDirCount) {
 			populateImageDir(imageDirectory, imageScrollView);
 			imageDirCount = imageDirectory.listDir();
@@ -700,6 +700,8 @@ void ofApp::setupDatGui() {
 	sortButton->onButtonEvent(this, &ofApp::start);
 	ofxDatGuiButton* saveButton = datImagePanel->addButton(SAVEIMAGEBUTTONTITLE);
 	saveButton->onButtonEvent(this, &ofApp::saveCurrentImage);
+	ofxDatGuiButton* revertButton = datImagePanel->addButton("Revert Changes");
+	revertButton->onButtonEvent(this, &ofApp::revertChanges);
 	ofxDatGuiDropdown* sortingParameterDropdown = datImagePanel->addDropdown("Sorting Parameter", sortingParameterOptions);
 	sortingParameterDropdown->onDropdownEvent(this, &ofApp::selectSortingParameter);
 	sortingParameterDropdown->select(0);
@@ -861,6 +863,12 @@ void ofApp::brushTypeSelected(ofxDatGuiDropdownEvent e) {
 
 void ofApp::selectSortingParameter(ofxDatGuiDropdownEvent e) {
 	currentlySelectedSortParameter = (SortParameter)e.child;
+}
+
+void ofApp::revertChanges(ofxDatGuiButtonEvent e) {
+	if (currentMode == Mode::Image) {
+		loadImage(currentFileName);
+	}
 }
 
 void ofApp::clearMask(ofxDatGuiButtonEvent e) {
