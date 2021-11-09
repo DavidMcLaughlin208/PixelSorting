@@ -453,11 +453,11 @@ void ofApp::draw() {
 
 		if (arrowDrawCounter > 0) {
 			ofPushMatrix();
-			ofTranslate(wid / 2, hei / 2);
+			ofTranslate(wid / 2 + imageAnchorX, hei / 2 + imageAnchorY);
 			ofRotate(angle);
 			int alpha = (int)min(255.0f, (float)arrowDrawCounter / (float)arrowDrawCounterStartFade * 255);
 			ofSetColor(200, 200, 200, alpha);
-			arrowsFbo.draw(-arrowsFbo.getWidth() / 2 + imageAnchorX, -arrowsFbo.getHeight() / 2 + imageAnchorY);
+			arrowsFbo.draw(-arrowsFbo.getWidth() / 2, -arrowsFbo.getHeight() / 2);
 			ofPopMatrix();
 			arrowDrawCounter--;
 		}
@@ -487,6 +487,12 @@ void ofApp::draw() {
 			break;
 		}
 	}
+	ofFill();
+	ofSetColor(50, 50, 50);
+	ofRect(0, 0, ofGetWidth(), imageAnchorY);
+	ofRect(0, 0, imageAnchorX, ofGetHeight());
+	ofRect(unrotatedWidth + imageAnchorX, 0, ofGetWidth() - unrotatedWidth + imageAnchorX, ofGetHeight());
+	ofRect(0, unrotatedHeight + imageAnchorY, maxWidth, ofGetHeight() - unrotatedHeight + imageAnchorY);
 
 	imageScrollView->draw();
 	maskImagesScrollView->draw();
@@ -844,7 +850,7 @@ void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMod
 }
 
 bool ofApp::withinMaskBounds(int x, int y) {
-	return x >= 0 && x < mask.getWidth() && y >= 0 && y < mask.getHeight();
+	return x >= imageAnchorX && x < mask.getWidth() + imageAnchorX && y >= imageAnchorY && y < mask.getHeight() + imageAnchorY;
 }
 
 bool ofApp::withinUnrotatedImageBounds(int x, int y) {
@@ -918,7 +924,7 @@ void ofApp::mouseMoved(int x, int y ){
 
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button){
-	if (currentMouseMode == MouseMode::MaskDraw && withinMaskBounds(x, y)) {
+	if (currentMouseMode == MouseMode::MaskDraw && withinUnrotatedImageBounds(x, y)) {
 		if (!(currentBrushMode == BrushMode::ClickAndDrag)) {
 			if (dragCounter % 2 == 0) {
 				std::cout << "Dragged: " << x << ", " << y << std::endl;

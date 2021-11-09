@@ -59,11 +59,8 @@ The code execution could not proceed because (LIBRARYNAME).dll was not found. Re
 
 ### Remaining items before initial release:
   * Manually test all of the file formats allowed by the relevant image/videos libraries being used
-  * Allow customization on max window/image display size
-  * Refine UI and reduce space taken
-  * Add arrows to indicate angle
   * Include default video and mask for testing and demonstration purposes
-  * Update window title and add toolbar image
+  * Add icon: [Guide](https://forum.openframeworks.cc/t/how-to-get-rid-of-console-and-set-proper-app-icon/24227/2)
   * See if I can get this to run on MacOS
   * Write documentation and create walkthrough video
 
@@ -75,12 +72,13 @@ The code execution could not proceed because (LIBRARYNAME).dll was not found. Re
   * Add ability to use any image as a mask with threshold customization
   * Write fragment shader to display what intervals will be sorted, dynamically as thresholds are modified
   * Add color pickers to modify mask color, angle arrows (default of white is not visible on white portions of images)
+  * Invert mask button
 * Improve UI clarity and usability
   * Add diagnostics and metrics to be shown in app (time taken, current frame for videos, what the application is currently doing, error messages, tooltips)
 * Add undo/redo functionality
 * Video improvements
   * Allow saving video files to desired format (default is mp4 now regardless of input video format)
-  * Reduce size of sorted video files. It is a [known behavior](https://www.quora.com/Why-is-that-when-I-read-an-mp4-video-using-OpenCV-re-write-it-using-OpenCV-the-size-of-the-rewritten-video-is-greater-than-original-video) that VideoWriter will drastically increase size of videos
+  * Reduce size of sorted video files. It is a [known behavior](https://www.quora.com/Why-is-that-when-I-read-an-mp4-video-using-OpenCV-re-write-it-using-OpenCV-the-size-of-the-rewritten-video-is-greater-than-original-video) that OpenCV VideoWriter will drastically increase size of videos
   * Add ability to scrub through videos to select start and end frame, see what intervals will be sorted at that frame
   * Break up video sorting to multiple files and concatenate them all at the end so in the case of any issues not all progress is lost
   * Add ability to apply curves or easing functions to parameter values to change them over the course of a video sorting
