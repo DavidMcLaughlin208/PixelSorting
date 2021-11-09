@@ -31,6 +31,21 @@ This application uses [OpenFrameworks](https://openframeworks.cc/) and c++ for t
 This application is still in development. I plan to publish some iterations in the Releases section when the code is in a more user friendly state.
 Documentation and a walkthrough video will be made as well.
 
+Initial release is very close!
+
+### Supported file types
+
+The supported files types are based on the underlying libraries used by OpenFrameworks and OpenCV.
+(NOTE: If you want to load and sort video files then you need to install the [K-Lite codec pack (basic)](https://codecguide.com/download_kl.htm))
+
+Images (from [FreeImage](https://freeimage.sourceforge.io/features.html) library):
+png, jpg, jpeg, jp2, bmp, tif, tga, pcx, ico
+
+Videos (from [K-Lite](https://codecguide.com/download_kl.htm) codec pack):
+AVI, MKV, MP4, FLV, MPEG, MOV, TS, M2TS, WMV, RM, RMVB, OGM, WebM
+
+I have verified all the listed image types are supported but have only verified MP4 and MKV video file types personally.
+
 ### Caveats
 
 <details>
@@ -83,7 +98,7 @@ The code execution could not proceed because (LIBRARYNAME).dll was not found. Re
 * Look into Mac and Linux support
 
 ### Examples
-![](media/GUIExample.png)
+![](media/GUIExample.PNG)
 ![](media/MultiSort.gif)
 ![](media/SortingOptions.gif)
 ![](media/SortedVideo.gif)
