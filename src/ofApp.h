@@ -54,6 +54,7 @@ public:
 	void brushTypeSelected(ofxDatGuiDropdownEvent e);
 	void selectSortingParameter(ofxDatGuiDropdownEvent e);
 	void clearMask(ofxDatGuiButtonEvent e);
+	void invertMask(ofxDatGuiButtonEvent e);
 	void angleSliderChanged(ofxDatGuiSliderEvent e);
 	void applyBrushStroke(int x, int y, int size, ofApp::BrushMode mode, int value);
 	bool withinMaskBounds(int x, int y);
@@ -192,6 +193,7 @@ public:
 	ofxDatGuiSlider* brushSizeSlider;
 	ofxDatGuiToggle* useMaskToggle;
 	ofxDatGuiSlider* maskThresholdSlider;
+	ofxDatGuiButton* invertMaskButton;
 
 
 	ofColor averageColorOfImage;

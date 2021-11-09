@@ -699,6 +699,8 @@ void ofApp::setupDatGui() {
 	datMaskPanel->addHeader("Mask Controls");
 	ofxDatGuiButton* clearMaskButton = datMaskPanel->addButton("Clear Mask");
 	clearMaskButton->onButtonEvent(this, &ofApp::clearMask);
+	invertMaskButton = datMaskPanel->addButton("Invert Mask");
+	invertMaskButton->onButtonEvent(this, &ofApp::invertMask);
 	maskOpacitySlider = datMaskPanel->addSlider(MASKOPACITYTITLE, 0.0, 1.0, 0.4);
 	//maskThresholdSlider = datMaskPanel->addSlider("Mask Threshold", 0.0, 1.0, 1.0);
 	ofxDatGuiButton* maskBrushToggle = datMaskPanel->addButton(DRAWMASKTOOLTITLE);
@@ -918,6 +920,19 @@ void ofApp::calculateImageAnchorPoints(int unrotatedWidth, int unrotatedHeight, 
 	int scaledHeight = unrotatedHeight * ratio;
 	imageAnchorX = max(0, (maxWidth - scaledWidth) / 2);
 	imageAnchorY = max(0, (maxHeight - scaledHeight) / 2);
+}
+
+void ofApp::invertMask(ofxDatGuiButtonEvent e) {
+	if (mask.isAllocated()) {
+		for (int y = 0; y < mask.getHeight(); y++) {
+			for (int x = 0; x < mask.getWidth(); x++) {
+				ofColor pixel = maskPixels.getColor(x, y);
+				maskPixels.setColor(x, y, ofColor(255, 255, 255, 255 - pixel.a));
+			}
+		}
+	}
+	mask.setFromPixels(maskPixels);
+	maskPixels = mask.getPixels();
 }
 
 //--------------------------------------------------------------
