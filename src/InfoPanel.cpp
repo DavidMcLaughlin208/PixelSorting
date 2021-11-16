@@ -10,9 +10,9 @@ void InfoPanel::setup() {
 	// I can't figure out why the progress bar fill is not being drawn
 	progressBar->setScale(1);
 	progressBar->setTheme(theme);
-	lastSortTimeTakenLabel = new ofxDatGuiLabel("Last Sort Duration: ");
+	lastSortTimeTakenLabel = new ofxDatGuiLabel("Duration: ");
 	frameCount = new ofxDatGuiLabel("Frame: 0 / 0");
-	estTimeToCompletion = new ofxDatGuiLabel("Est Time Remaining: ");
+	estTimeToCompletion = new ofxDatGuiLabel("Est Complete: ");
 	items.push_back(activeStatusLabel);
 	items.push_back(usingMaskLabel);
 	items.push_back(progressBar);
@@ -38,7 +38,8 @@ void InfoPanel::setActiveStatus(std::string status) {
 }
 
 void InfoPanel::setUsingMask(bool useMask) {
-	usingMaskLabel->setLabel("Using Mask: " + useMask ? "True" : "False");
+	std::string val = (useMask ? "True" : "False");
+	usingMaskLabel->setLabel("Using Mask: " + val);
 }
 
 void InfoPanel::setProgress(float percentage) {
@@ -62,14 +63,14 @@ void InfoPanel::sortTimeTaken(int milliseconds) {
 	else {
 		lastSortTime.push_back(milliseconds);
 	}
-	lastSortTimeTakenLabel->setLabel("Last Sort Duration: " + ofToString(milliseconds) + "ms");
+	lastSortTimeTakenLabel->setLabel("Duration: " + ofToString(milliseconds) + "ms");
 }
 
 void InfoPanel::setFrameCounter(int currentFrame, int totalFrames) {
 	frameCount->setLabel("Frame " + ofToString(currentFrame) + "/" + ofToString(totalFrames));
 	int secondsRemaining = getAverageSortTime() * (totalFrames - currentFrame) / 1000;
 	int minutesRemaining = secondsRemaining / 60;
-	estTimeToCompletion->setLabel("Est Time Remaining: " + ofToString(minutesRemaining) + "m " + ofToString(secondsRemaining % 60) + "s");
+	estTimeToCompletion->setLabel("Est Complete: " + ofToString(minutesRemaining) + "m " + ofToString(secondsRemaining % 60) + "s");
 }
 
 int InfoPanel::getAverageSortTime() {

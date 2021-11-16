@@ -254,7 +254,7 @@ void ofApp::update() {
 
 
 	// This should be delegated to a watcher thread at some point
-	if (directoryRefreshCounter >= 300) {
+	if (directoryRefreshCounter >= 100) {
 		if (imageDirectory.listDir() != imageDirCount) {
 			populateImageDir(imageDirectory, imageScrollView);
 			imageDirCount = imageDirectory.listDir();
@@ -533,13 +533,14 @@ void ofApp::loadMask(std::string fileName) {
 		mask.clear();
 		mask.load("images/masks/" + fileName);
 		mask.setImageType(OF_IMAGE_COLOR_ALPHA);
+		currentMaskFilename = fileName;
 
 		maskPixels = mask.getPixels();
 
 		for (int y = 0; y < mask.getHeight(); y++) {
 			for (int x = 0; x < mask.getWidth(); x++) {
 				ofColor pixel = maskPixels.getColor(x, y);
-				maskPixels.setColor(x, y, ofColor(255, 255, 255, pixel.getBrightness()));
+				maskPixels.setColor(x, y, ofColor(pixel.r, pixel.g, pixel.b, pixel.getBrightness()));
 			}
 		}
 		mask.setFromPixels(maskPixels);
@@ -582,6 +583,7 @@ void ofApp::loadImage(std::string fileName) {
 		currentImageAngle = 0;
 		imageAnchorX = 0;
 		imageAnchorY = 0;
+		infoPanel->setFrameCounter(0, 0);
 	}
 	else if (std::find(videoExtensions.begin(), videoExtensions.end(), extension) != videoExtensions.end()) {
 		infoPanel->setActiveStatus("Loading Video");
@@ -611,11 +613,10 @@ void ofApp::loadImage(std::string fileName) {
 		currentImageAngle = 0;
 		imageAnchorX = 0;
 		imageAnchorY = 0;
-		ofFilePath filePath;
 
-		float fps = videoPlayer.getTotalNumFrames() / videoPlayer.getDuration();
-		videoWriter = cv::VideoWriter("data/images/" + getTimeStampedFileName(fileName, ".mp4"), cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(image.getWidth(), image.getHeight()), true);
+		
 		currentMode = Mode::Video;
+		infoPanel->setFrameCounter(0, videoPlayer.getTotalNumFrames());
 	}
 	else {
 		// Display some error message
@@ -676,6 +677,8 @@ void ofApp::start(ofxDatGuiButtonEvent e) {
 		}
 		if (currentMode == Mode::Video) {
 			infoPanel->setFrameCounter(videoPlayer.getCurrentFrame(), videoPlayer.getTotalNumFrames());
+			float fps = videoPlayer.getTotalNumFrames() / videoPlayer.getDuration();
+			videoWriter = cv::VideoWriter("data/images/" + getTimeStampedFileName(currentFileName, ".mp4"), cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(image.getWidth(), image.getHeight()), true);
 		}
 	}
 	else {
@@ -741,6 +744,8 @@ void ofApp::setupDatGui() {
 	datMaskPanel->addHeader("Mask Controls");
 	ofxDatGuiButton* clearMaskButton = datMaskPanel->addButton("Clear Mask");
 	clearMaskButton->onButtonEvent(this, &ofApp::clearMask);
+	ofxDatGuiButton* saveMaskButton = datMaskPanel->addButton("Save Mask");
+	saveMaskButton->onButtonEvent(this, &ofApp::saveCurentMask);
 	invertMaskButton = datMaskPanel->addButton("Invert Mask");
 	invertMaskButton->onButtonEvent(this, &ofApp::invertMask);
 	maskOpacitySlider = datMaskPanel->addSlider(MASKOPACITYTITLE, 0.0, 1.0, 0.4);
@@ -796,6 +801,17 @@ void ofApp::saveCurrentImage(ofxDatGuiButtonEvent e) {
 		image.setFromPixels(imagePixels);
 	}
 	infoPanel->setActiveStatus(IDLE);
+}
+
+void ofApp::saveCurentMask(ofxDatGuiButtonEvent e) {
+	if (mask.isAllocated()) {
+		std::string saveName = currentMaskFilename;
+		if (currentMaskFilename == "") {
+			saveName = "UnnamedMask.png";
+		}
+		std::string fullName = getTimeStampedFileName(saveName, ".png");
+		mask.save("images/masks/" + fullName);
+	}
 }
 
 std::string ofApp::getTimeStampedFileName(std::string filename, std::string suppliedExtension) {
@@ -885,6 +901,7 @@ void ofApp::clearMask(ofxDatGuiButtonEvent e) {
 	mask.update();
 	maskPixels = mask.getPixels();
 	useMask = false;
+	currentMaskFilename = "";
 	infoPanel->setUsingMask(useMask);
 }
 
@@ -991,6 +1008,8 @@ void ofApp::invertMask(ofxDatGuiButtonEvent e) {
 	}
 	mask.setFromPixels(maskPixels);
 	maskPixels = mask.getPixels();
+	useMask = true;
+	infoPanel->setUsingMask(useMask);
 }
 
 //--------------------------------------------------------------

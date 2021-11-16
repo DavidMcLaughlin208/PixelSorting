@@ -73,8 +73,9 @@ If the following error is displayed when trying to launch the executable, then l
 The code execution could not proceed because (LIBRARYNAME).dll was not found. Reinstalling the program may fix the problem.
 
 ### Remaining items before initial release:
+  * Fix mask saving filename
+  * Stop sorting when loading a new image
   * Include default video and mask for testing and demonstration purposes
-  * Add icon: [Guide](https://forum.openframeworks.cc/t/how-to-get-rid-of-console-and-set-proper-app-icon/24227/2)
   * Write documentation and create walkthrough video
 
 ### Todo List
@@ -88,6 +89,7 @@ The code execution could not proceed because (LIBRARYNAME).dll was not found. Re
 * Improve UI clarity and usability
   * Add diagnostics and metrics to be shown in app (time taken, current frame for videos, what the application is currently doing, error messages, tooltips)
   * Using mask, last sorting time, what its currently doing,  est time to completion, percentage complete
+  * Make a better icon: [Guide](https://forum.openframeworks.cc/t/how-to-get-rid-of-console-and-set-proper-app-icon/24227/2)
 * Add undo/redo functionality
 * Video improvements
   * Allow saving video files to desired format (default is mp4 now regardless of input video format)
@@ -96,6 +98,7 @@ The code execution could not proceed because (LIBRARYNAME).dll was not found. Re
   * Break up video sorting to multiple files and concatenate them all at the end so in the case of any issues not all progress is lost
   * Add ability to apply curves or easing functions to parameter values to change them over the course of a video sorting
 * Look into Mac and Linux support
+* Refine sorting algorithm to improev performance
 
 ### Examples
 ![](media/GUIExample.PNG)

@@ -4,6 +4,7 @@
 #include "ofxOpenCv.h"
 #include "ofxDatGui.h"
 #include "InfoPanel.h"
+#include "../resource.h"
 #include <vector>
 #include <string>
 #include <chrono>
@@ -53,6 +54,7 @@ public:
 	void clickOnImageButton(ofxDatGuiScrollViewEvent e);
 	void brushTypeSelected(ofxDatGuiDropdownEvent e);
 	void selectSortingParameter(ofxDatGuiDropdownEvent e);
+	void saveCurentMask(ofxDatGuiButtonEvent e);
 	void clearMask(ofxDatGuiButtonEvent e);
 	void invertMask(ofxDatGuiButtonEvent e);
 	void angleSliderChanged(ofxDatGuiSliderEvent e);
@@ -121,6 +123,7 @@ public:
 
 	ofImage mask;
 	bool useMask = false;
+	std::string currentMaskFilename = "";
 	int maskOpacity = 110;
 	int maskThreshold = 255;
 
