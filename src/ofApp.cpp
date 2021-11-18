@@ -678,7 +678,7 @@ void ofApp::start(ofxDatGuiButtonEvent e) {
 		if (currentMode == Mode::Video) {
 			infoPanel->setFrameCounter(videoPlayer.getCurrentFrame(), videoPlayer.getTotalNumFrames());
 			float fps = videoPlayer.getTotalNumFrames() / videoPlayer.getDuration();
-			videoWriter = cv::VideoWriter("data/images/" + getTimeStampedFileName(currentFileName, ".mp4"), cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(image.getWidth(), image.getHeight()), true);
+			videoWriter = cv::VideoWriter("data/images/" + getTimeStampedFileName(currentFileName, ".mp4", ""), cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(image.getWidth(), image.getHeight()), true);
 		}
 	}
 	else {
@@ -794,7 +794,7 @@ void ofApp::saveCurrentImage(ofxDatGuiButtonEvent e) {
 		imagePixels.crop(originalImageX, originalImageY, unrotatedWidth, unrotatedHeight);
 		image.resize(imagePixels.getWidth(), imagePixels.getHeight());
 		image.setFromPixels(imagePixels);
-		std::string fullName = getTimeStampedFileName(currentFileName, "");
+		std::string fullName = getTimeStampedFileName(currentFileName, "", "");
 		image.save("images/" + fullName);
 		currentFileName = fullName;
 		imagePixels = copy;
@@ -807,14 +807,15 @@ void ofApp::saveCurentMask(ofxDatGuiButtonEvent e) {
 	if (mask.isAllocated()) {
 		std::string saveName = currentMaskFilename;
 		if (currentMaskFilename == "") {
-			saveName = "UnnamedMask.png";
+			ofFilePath filePath;
+			saveName = filePath.getBaseName(currentFileName);
 		}
-		std::string fullName = getTimeStampedFileName(saveName, ".png");
+		std::string fullName = getTimeStampedFileName(saveName, ".png", "Mask");
 		mask.save("images/masks/" + fullName);
 	}
 }
 
-std::string ofApp::getTimeStampedFileName(std::string filename, std::string suppliedExtension) {
+std::string ofApp::getTimeStampedFileName(std::string filename, std::string suppliedExtension, std::string suffix) {
 	ofFilePath filePath;
 	std::string baseName = filePath.getBaseName(filename);
 	std::string extension = "." + filePath.getFileExt(filename);
@@ -837,6 +838,7 @@ std::string ofApp::getTimeStampedFileName(std::string filename, std::string supp
 	if (alreadyHasDate) {
 		baseName = baseName.substr(0, baseName.length() - 15);
 	}
+	baseName += suffix;
 	std::string extensionToUse = extension;
 	if (suppliedExtension != "") {
 		extensionToUse = suppliedExtension;

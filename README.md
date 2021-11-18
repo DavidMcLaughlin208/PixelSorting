@@ -8,6 +8,8 @@ The intervals can be determined arbitrarily, such as seleccting all consecutive 
 
 For more details and a visual explanation check this blog post by satyarth [here](http://satyarth.me/articles/pixel-sorting/).
 
+![](media/seacliff.jpeg) ![](media/seacliffsorted.jpeg)
+
 ![](media/SortedVideo.gif)
 
 ### Why make this program?
