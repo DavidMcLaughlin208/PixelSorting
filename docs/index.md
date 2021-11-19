@@ -1,10 +1,10 @@
-# Pixel Sortium Documentation
+# Pixel Sortium Documentation v0.1
 
 ### What is pixel sorting?
 
 In short, pixel sorting is taking an interval of pixels in a row or column from an image and sorting them based on some criteria.
 
-The intervals can be determined arbitrarily, such as seleccting all consecutive pixels under a certain brightness threshold, and then sorting them by some property such as brightness values.
+The intervals can be determined arbitrarily, such as seleccting all consecutive pixels within a certain Brightness window, and then sorting them by some property such as brightness values.
 
 For more details and a visual explanation check this blog post by satyarth [here](http://satyarth.me/articles/pixel-sorting/).
 
@@ -17,18 +17,18 @@ For more details and a visual explanation check this blog post by satyarth [here
 
 ### Installation
 
--Download the zip folder in the Releases section.
--Unzip the folder to a location on your computer.
--Open the folder and you will see something like this
--All images and videos you want to be able to load into the application will need to be placed in the `data/images` folder (this can be done when the application is open as well)
--All mask images will need to be placed in the `data/images/masks` folder
--At the base folder double click the PixelSortium.exe file to launch the application
+* Download the zip folder in the Releases section.
+* Unzip the folder to a location on your computer.
+* Open the folder
+* All images and videos you want to be able to load into the application will need to be placed in the `data/images` folder (this can be done when the application is open as well)
+* All mask images will need to be placed in the `data/images/masks` folder
+* At the base folder double click the PixelSortium.exe file to launch the application
 
 ### Error on start up
 
-If you encounter the following error: `The code execution could not proceed because (LIBRARYNAME).dll was not found. Reinstalling the program may fix the problem.`
+If you encounter the following error when launching the app: `The code execution could not proceed because (LIBRARYNAME).dll was not found. Reinstalling the program may fix the problem.`
 
-Then you need to ensure you have the latest version of [Microsoft Visual C++ Redistributable 2015-2019](https://docs.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist?view=msvc-170) installed
+This is caused due to not having the latest version of [Microsoft Visual C++ Redistributable 2015-2019](https://docs.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist?view=msvc-170) installed
 
 ----
 
@@ -37,6 +37,8 @@ If you try to launch this application on Mac it will say that the application ca
 ### Usage
 
 At the top of the screen you will see some diagnostic information.
+
+![](media/Diagnostics.PNG)
 
 **Status** : Provides information for what the application is currently doing. (Idle, Sorting, Loading Image, Rotating Image). 
 This can be useful if the application is currently doing something but it is not obvious (such as performing a sort with parameters that do not actually change the image)
@@ -49,11 +51,13 @@ This can be useful if the application is currently doing something but it is not
 
 **Frame** : Indicates the current frame of total frames in the currently sorted video. If an image is currently loaded then it will always display 0 / 0
 
-**Est Complete** : Gives estimation in minutes and seconds for when the current video file will be finished sorting. This is very rough since the average sorting time per frame can vary greatly depending on parameter values and the content of the frame itself
+**Est Complete** : Estimate in minutes and seconds for when the current video file will be finished sorting. This is very rough since the average sorting time per frame can vary greatly depending on parameter values and the content of the frame itself
 
 ----
 
 On the right side of the screen you will see two UI columns. The column on the left contains parameters for sorting and files which can be loaded
+
+![](media/SortParameters.PNG)
 
 **Sort/Stop** : This button kicks of the sorting process on the curently loaded image/video. While sorting is running the button changes to a **Stop** button which allows you to halt the current sort. 
 When pressing the sort button again it will not continue where it left off. It will start from the beginning for both images and videos. The **Stop** button can be used to halt video sorting and it will finish encoding and close the pixel sorted video file.
@@ -63,7 +67,7 @@ This can be verbose but keeps the images sorted in order and ensures there are n
 
 **Revert Changes** : This button essentially loads the latest version of the file you have open. So if you load an image and sort it and then Revert it, the original file will be reloaded. If you sort an image and save it and then press Revert Changes nothing will happen since it will reload the last saved version (which is already open)
 
-**Sorting Parameter** : Brightness (Default), Hue, Saturation. Parameter which determines how pixels are compared when sorting.
+**Sorting Parameter** : Brightness (Default), Hue, Saturation. Parameter which determines pixel characteristic to compare when sorting.
 
 **Lower Threshold** : The lower part of the threshold window when sorting pixels. If the sorting parameter is set to Brightness then if a pixel is to be considered for sorting it must have a Brightness value above the value of Lower Threshold
 
@@ -73,12 +77,16 @@ This can be verbose but keeps the images sorted in order and ensures there are n
 
 **Thread Count** : The amount of threads used when performing the sort. This multithreading is what speeds up the sorting process in the application. I have found the sweet spot to be 17 threads.
 
-**Load Image** : This list shows all the files in the `data/images` folder which are able to be loaded by the application. Valid file types are listed in the Support File Types section of the documentation.
+**Load Image** : This list shows all the files in the `data/images` folder which are able to be loaded by the application. Supported file types are listed in the Supported File Types section of the documentation.
 When clicking on one of the buttons in this list it will load the image of that name. Any current image or video will be lost so ensure that you have saved it before loading a new image.
 
-If an image that is loaded is too large to fit in the current window size it will be scaled down to fit. This is just visual but the resolution remains the same.
+If an image that is loaded is too large to fit in the current window size it will be scaled down to fit. This is just visual but the internal resolution remains the same.
+
+![](media/ImageFiles.PNG)
 
 The right-most UI column contains parameters for masks and files which can be loaded:
+
+![](media/MaskParameters.PNG)
 
 **Clear Mask** : Clicking this button clears the mask of all data and indicates to the application that the mask should not even be referenced when sorting
 
@@ -95,8 +103,33 @@ The size can be increased and decreased by scrolling the mouse wheel. Left mous 
 
 **Brush Size** : Affects the circle and square brush types. Can be changed with the slider or the mouse wheel.
 
-**Load Mask** : This list shows all files in the `data/images/masks` foler which are able to be loaded by the application. Valid file types are listed in the Support File Types section of the documentation.
+**Load Mask** : This list shows all files in the `data/images/masks` foler which are able to be loaded by the application. Supported file types are listed in the Supported File Types section of the documentation.
 When clicking on one of the buttons in this list it will load the image of that name as a mask. The mask image resolution does not have to match the currently loaded image. If the mask image is smaller then extra empty pixels will be added to match the current image size. This allows you to draw mask data for all parts of the current image using the Draw Mask Tool.
 
-### Sorting Videos
+![](media/SortFiles.PNG)
+
+### Supported file types
+
+The supported files types are based on the underlying libraries used by OpenFrameworks and OpenCV.
+(NOTE: If you want to load and sort video files then you need to install the [K-Lite codec pack (basic)](https://codecguide.com/download_kl.htm))
+
+Images (from [FreeImage](https://freeimage.sourceforge.io/features.html) library):
+png, jpg, jpeg, jp2, bmp, tif, tga, pcx, ico
+
+Videos (from [K-Lite](https://codecguide.com/download_kl.htm) codec pack):
+AVI, MKV, MP4, FLV, MPEG, MOV, TS, M2TS, WMV, RM, RMVB, OGM, WebM
+
+I have verified all the listed image types are supported but have only verified MP4 and MKV video file types personally.
+
+### Mask Details
+
+Masks can be drawn, saved, and reused all within the application. However, in the case you want to import a custom mask file there are some things to consider.
+The mask file must be placed in the `data/images/masks` folder. The masking data values are based on the Brightness of each pixel in the mask. Alpha values are not considered when reading the mask.
+
+Currently, the threshold for pixels to count for masking is maximum (255 or 1.0 depending on the file type). 
+This means that the masking area should be completely bright (easiest is pure white) and any area not masked should be less than pure white (easiest is black).
+
+Below is a valid mask to import. The white area will be the only section considerd for sorting by the algorithm. The black area will be ignored by the algorithm:
+
+![](media/SampleMask.png)
 
