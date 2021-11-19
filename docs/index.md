@@ -2,7 +2,7 @@
 
 ### What is pixel sorting?
 
-In short, pixel sorting is taking an interval of pixels in a row or column from an image and sorting them based on some criteria.
+In short, pixel sorting is taking an interval of pixels in a row or column from an image and rearranging or sorting them based on some criteria.
 
 The intervals can be determined arbitrarily, such as seleccting all consecutive pixels within a certain Brightness window, and then sorting them by some property such as brightness values.
 
@@ -53,7 +53,7 @@ This can be useful if the application is currently doing something but it is not
 
 **Est Complete** : Estimate in minutes and seconds for when the current video file will be finished sorting. This is very rough since the average sorting time per frame can vary greatly depending on parameter values and the content of the frame itself
 
-----
+### Sorting Parameters
 
 On the right side of the screen you will see two UI columns. The column on the left contains parameters for sorting and files which can be loaded
 
@@ -63,7 +63,7 @@ On the right side of the screen you will see two UI columns. The column on the l
 When pressing the sort button again it will not continue where it left off. It will start from the beginning for both images and videos. The **Stop** button can be used to halt video sorting and it will finish encoding and close the pixel sorted video file.
 
 **Save Image** : This is used to save the current pixels on screen to a new image in the `data/images` folder. The save format is FILENAME-{Year}{Month}{Day}{Hour}{Second} (ex SampleImage-20211116075411). 
-This can be verbose but keeps the images sorted in order and ensures there are no conflicts. This button is not used for video file sorting since videos are saved when the sorting is completed or stopped early by the user
+This can be verbose but keeps the images sorted in order and ensures there are no conflicts. This button is not used for video file sorting since videos are saved when the last frame is sorted or sorting is stopped early by the user
 
 **Revert Changes** : This button essentially loads the latest version of the file you have open. So if you load an image and sort it and then Revert it, the original file will be reloaded. If you sort an image and save it and then press Revert Changes nothing will happen since it will reload the last saved version (which is already open)
 
@@ -77,12 +77,16 @@ This can be verbose but keeps the images sorted in order and ensures there are n
 
 **Thread Count** : The amount of threads used when performing the sort. This multithreading is what speeds up the sorting process in the application. I have found the sweet spot to be 17 threads.
 
+### Loading Images and Videos
+
 **Load Image** : This list shows all the files in the `data/images` folder which are able to be loaded by the application. Supported file types are listed in the Supported File Types section of the documentation.
 When clicking on one of the buttons in this list it will load the image of that name. Any current image or video will be lost so ensure that you have saved it before loading a new image.
 
 If an image that is loaded is too large to fit in the current window size it will be scaled down to fit. This is just visual but the internal resolution remains the same.
 
 ![](media/ImageFiles.PNG)
+
+### Mask Parameters
 
 The right-most UI column contains parameters for masks and files which can be loaded:
 
@@ -102,6 +106,8 @@ The size can be increased and decreased by scrolling the mouse wheel. Left mous 
 **Brush Type** : Circle, Square, Drag and Release. Drag and Release allows you to click and drag a rectangular area to either draw or erase mask data. This can be useful for blocking large portions of the image with mask data and then using a smaller circle brush to refine the edges.
 
 **Brush Size** : Affects the circle and square brush types. Can be changed with the slider or the mouse wheel.
+
+### Loading Mask Files
 
 **Load Mask** : This list shows all files in the `data/images/masks` foler which are able to be loaded by the application. Supported file types are listed in the Supported File Types section of the documentation.
 When clicking on one of the buttons in this list it will load the image of that name as a mask. The mask image resolution does not have to match the currently loaded image. If the mask image is smaller then extra empty pixels will be added to match the current image size. This allows you to draw mask data for all parts of the current image using the Draw Mask Tool.
@@ -132,4 +138,22 @@ This means that the masking area should be completely bright (easiest is pure wh
 Below is a valid mask to import. The white area will be the only section considerd for sorting by the algorithm. The black area will be ignored by the algorithm:
 
 ![](media/SampleMask.png)
+
+### Sorting Videos
+
+Sorting videos is similar to sorting images. You set the desired sorting parameters and mask parameters press **Start** and the video will be sorted frame by frame.
+
+You can change the parameters while the video is being sorted and the modified parameters will take effect immediately (except angle change will take effect on next frame).
+
+In order for the resulting video file to be usable it must be closed by the VideoWriter. The VideoWriter will close the file when the last frame is sorted or when the user presses the **Stop** button.
+
+If the application process is interrupted for any reason (computer goes to sleep, force quitting the application window) the file will not be closed and will be unusable and unrecoverable.
+The original video file will not be affected, just the new, sorted video file.
+
+### Caveats
+
+The application is still in development and there will likely be bugs. If you encounter any, please create a ticket in the [Issues](https://github.com/DavidMcLaughlin208/PixelSorting/issues)section in the Github repository.
+
+The resulting pixel sorted video files will be significantly larger (7mb -> 65 mb) than the original input files. This is a [known behavior](https://www.quora.com/Why-is-that-when-I-read-an-mp4-video-using-OpenCV-re-write-it-using-OpenCV-the-size-of-the-rewritten-video-is-greater-than-original-video) of OpenCV VideoWriter. The best workaround is to use some program (like [VLC](https://www.videolan.org/)) to convert the video using a lossless encoding. 
+This will reduce the file size but not back down to the same as the input file.
 
