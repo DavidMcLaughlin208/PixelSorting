@@ -10,19 +10,22 @@ For more details and a visual explanation check this blog post by satyarth [here
 
 ### System Requirements
 
-- Windows 64-bit OS
-- Latest version of [Microsoft Visual C++ Redistributable 2015-2019](https://docs.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist?view=msvc-170)
-- At least 2 GB of RAM for soritng images. At least 4 GB RAM for sorting videos (although more may be required for large video files)
-- Install [K-Lite Codec](https://codecguide.com/download_kl.htm) pack (only required if sorting video files)
+* Windows 64-bit OS
+* Latest version of [Microsoft Visual C++ Redistributable 2015-2019](https://docs.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist?view=msvc-170). Choose the x64 version as this application will need to run on 64-bit Windows OS.
+* At least 2 GB of RAM for sorting images. At least 4 GB RAM for sorting videos (although more may be required for large video files)
+* Install [K-Lite Codec](https://codecguide.com/download_kl.htm) pack (only required if sorting video files). Click "Download Basic" and follow the instructions.
+* 1GB disk space for executable and libraries
 
 ### Installation
 
-* Download the zip folder in the Releases section.
+* Download the SourceCode.zip file in the [Releases](https://github.com/DavidMcLaughlin208/PixelSorting/releases) section.
 * Unzip the folder to a location on your computer.
-* Open the folder
+* Extract the contents to a folder of your choosing
+* Open the `PixelSorting-v0.1.0` folder
+* Open the `bin` folder
+* Launch `PixelSortium.exe` (Windows will warn you of an Untrusted Publisher. Click "More Info" and then "Run Anyway")
 * All images and videos you want to be able to load into the application will need to be placed in the `data/images` folder (this can be done when the application is open as well)
 * All mask images will need to be placed in the `data/images/masks` folder
-* At the base folder double click the PixelSortium.exe file to launch the application
 
 ### Error on start up
 
