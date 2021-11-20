@@ -307,7 +307,7 @@ void ofApp::update() {
 			}
 			else if (currentMode == Mode::Video) {
 				saveFrameToVideo();
-				if (videoPlayer.getCurrentFrame() > videoPlayer.getTotalNumFrames() - 1) {
+				if (videoPlayer.getCurrentFrame() >= videoPlayer.getTotalNumFrames() - 1) {
 					videoPlayer.close();
 					videoWriter.release();
 					started = false;

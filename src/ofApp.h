@@ -206,5 +206,5 @@ public:
 
 	ofColor averageColorOfImage;
 
-	float versionNumber = 0.10;
+	float versionNumber = 0.1.0;
 };
