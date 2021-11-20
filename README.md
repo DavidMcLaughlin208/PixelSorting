@@ -19,7 +19,7 @@ I wanted to be able to easily apply pixel sorting to videos files but that would
 
 Additionally, I wanted to implement multithreading on the pixel sort algorithm to speed it up which will be especially useful for sorting long videos.
 The single threaded python application can sort a 1920x1200 image at a 45 degree angle with thresholds set from 0.25 - 0.8 (default parameters) in about 17 seconds.
-This c++ multithreaded application can perform the same sort on the same image in 4.5 seconds while showing the image as its being sorted and allowing for rapid iteration.
+This c++ multithreaded application can perform the same sort on the same image in 2.1 seconds while showing the image as its being sorted and allowing for rapid iteration.
 
 I also wanted to created an application with a gui to give more immediate visual feedback to the user and add other tools such as mask drawing in app.
 

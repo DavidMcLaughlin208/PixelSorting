@@ -418,9 +418,6 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 void ofApp::saveFrameToVideo() {
 	infoPanel->setActiveStatus("Saving Frame To Video");
 	if (currentImageAngle != 0) {
-		ofPixels copy;
-		copy.allocate(imagePixels.getWidth(), imagePixels.getHeight(), imagePixels.getImageType());
-		imagePixels.pasteInto(copy, 0, 0);
 		rotateImage(-currentImageAngle, true);
 		int originalImageX = image.getWidth() / 2 - unrotatedWidth / 2;
 		int originalImageY = image.getHeight() / 2 - unrotatedHeight / 2;
@@ -678,7 +675,7 @@ void ofApp::start(ofxDatGuiButtonEvent e) {
 		if (currentMode == Mode::Video) {
 			infoPanel->setFrameCounter(videoPlayer.getCurrentFrame(), videoPlayer.getTotalNumFrames());
 			float fps = videoPlayer.getTotalNumFrames() / videoPlayer.getDuration();
-			videoWriter = cv::VideoWriter("data/images/" + getTimeStampedFileName(currentFileName, ".mp4", ""), cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(image.getWidth(), image.getHeight()), true);
+			videoWriter = cv::VideoWriter("data/images/" + getTimeStampedFileName(currentFileName, ".mp4", ""), cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(unrotatedWidth, unrotatedHeight), true);
 		}
 	}
 	else {

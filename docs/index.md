@@ -157,3 +157,6 @@ The application is still in development and there will likely be bugs. If you en
 The resulting pixel sorted video files will be significantly larger (7mb -> 65 mb) than the original input files. This is a [known behavior](https://www.quora.com/Why-is-that-when-I-read-an-mp4-video-using-OpenCV-re-write-it-using-OpenCV-the-size-of-the-rewritten-video-is-greater-than-original-video) of OpenCV VideoWriter. The best workaround is to use some program (like [VLC](https://www.videolan.org/)) to convert the video using a lossless encoding. 
 This will reduce the file size but not back down to the same as the input file.
 
+As of now the sorting will start from the first frame and continue until the last frame is sorted or the sorting is ended early. 
+If you want to only sort a section of your video, right now I would recommend using video editing software to make a new file of just the section you want sorted and import that into Pixel Sortium.
+
