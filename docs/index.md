@@ -13,7 +13,16 @@ For more details and a visual explanation check this blog post by satyarth [here
 * Windows 64-bit OS
 * Latest version of [Microsoft Visual C++ Redistributable 2015-2019](https://docs.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist?view=msvc-170). Choose the x64 version as this application will need to run on 64-bit Windows OS.
 * At least 2 GB of RAM for sorting images. At least 4 GB RAM for sorting videos (although more may be required for large video files)
-* Install [K-Lite Codec](https://codecguide.com/download_kl.htm) pack (only required if sorting video files). Click "Download Basic" and follow the instructions.
+* (Only required if sorting video files) Install [K-Lite Codec pack](https://codecguide.com/download_kl.htm). Click "Download Basic" and then "Server 1" to download the installer. 
+  * Launch the installer 
+    * Select "Normal" installation
+    * Accept defaults for the next few pages of options
+    * It will ask to install adaware which is bloatware. This is not needed. Press decline
+    * Click install
+    * Click "Launch Codec Tweak Tool"
+      * Click the "Fixes" button in the top left
+      * Select "Re-register DirectShow Filters from K-Lite Pack"
+      * Click "Apply & Close"
 * 1GB disk space for executable and libraries
 
 ### Installation
