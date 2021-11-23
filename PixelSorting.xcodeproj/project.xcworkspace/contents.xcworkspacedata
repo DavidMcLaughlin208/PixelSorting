@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <FileRef
+      location = "group:../src/InfoPanel.cpp">
+   </FileRef>
+   <FileRef
+      location = "group:../src/InfoPanel.h">
+   </FileRef>
+   <FileRef
+      location = "group:../src/ofApp.cpp">
+   </FileRef>
+   <FileRef
+      location = "group:../src/ofApp.h">
+   </FileRef>
+   <FileRef
+      location = "self:">
+   </FileRef>
+</Workspace>
