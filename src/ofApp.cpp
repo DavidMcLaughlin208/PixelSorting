@@ -717,7 +717,7 @@ void ofApp::setupDatGui() {
 	angleSlider = datImagePanel->addSlider(ANGLESLIDERTITLE, 0, 359, 0);
 	angleSlider->setPrecision(0);
 	angleSlider->onSliderEvent(this, &ofApp::angleSliderChanged);
-	threadCountSlider = datImagePanel->addSlider(THREADCOUNTSLIDERTITLE, 1, 30, threadCount);
+	threadCountSlider = datImagePanel->addSlider(THREADCOUNTSLIDERTITLE, 1, 50, threadCount);
 	threadCountSlider->setPrecision(0);
 	threadCountSlider->setValue(threadCount);
 	datImagePanel->addLabel("Load Image");

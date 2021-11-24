@@ -1,4 +1,4 @@
-# Pixel Sortium Documentation v0.1
+# Pixel Sortium Documentation v0.1.1
 
 ### What is pixel sorting?
 
@@ -23,7 +23,6 @@ For more details and a visual explanation check this blog post by satyarth [here
       * Click the "Fixes" button in the top left
       * Select "Re-register DirectShow Filters from K-Lite Pack"
       * Click "Apply & Close"
-* 1GB disk space for executable and libraries
 
 ### Installation
 
@@ -38,13 +37,12 @@ For more details and a visual explanation check this blog post by satyarth [here
 
 ### Error on start up
 
-If you encounter the following error when launching the app: `The code execution could not proceed because (LIBRARYNAME).dll was not found. Reinstalling the program may fix the problem.`
+If you encounter the following error when launching the app: 
+
+`The code execution could not proceed because (LIBRARYNAME).dll was not found. Reinstalling the program may fix the problem.`
 
 This is caused due to not having the latest version of [Microsoft Visual C++ Redistributable 2015-2019](https://docs.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist?view=msvc-170) installed
 
-----
-
-If you try to launch this application on Mac it will say that the application cannot run on Mac. As of now the only release available works on Windows but I would like to support Mac in the future.
 
 ### Usage
 
@@ -164,7 +162,7 @@ The original video file will not be affected, just the new, sorted video file.
 
 ### Caveats
 
-The application is still in development and there will likely be bugs. If you encounter any, please create a ticket in the [Issues](https://github.com/DavidMcLaughlin208/PixelSorting/issues)section in the Github repository.
+The application is still in development and there will likely be bugs. If you encounter any, please create a ticket in the [Issues](https://github.com/DavidMcLaughlin208/PixelSorting/issues) section in the Github repository.
 
 The resulting pixel sorted video files will be significantly larger (7mb -> 65 mb) than the original input files. This is a [known behavior](https://www.quora.com/Why-is-that-when-I-read-an-mp4-video-using-OpenCV-re-write-it-using-OpenCV-the-size-of-the-rewritten-video-is-greater-than-original-video) of OpenCV VideoWriter. The best workaround is to use some program (like [VLC](https://www.videolan.org/)) to convert the video using a lossless encoding. 
 This will reduce the file size but not back down to the same as the input file.
@@ -172,3 +170,4 @@ This will reduce the file size but not back down to the same as the input file.
 As of now the sorting will start from the first frame and continue until the last frame is sorted or the sorting is ended early. 
 If you want to only sort a section of your video, right now I would recommend using video editing software to make a new file of just the section you want sorted and import that into Pixel Sortium.
 
+If you encounter any issues with mask data being offset from where it appears on the screen then restart the application and it should be resolved. It is a known issue I am looking into.

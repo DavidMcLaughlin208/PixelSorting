@@ -151,7 +151,7 @@ public:
 	bool sortComplete = false;
 	bool paddingAddedToImage = false;
 
-	int threadCount = 17;
+	int threadCount = 30;
 	int pixelTransferThreadCount = 14;
 
 	cv::VideoWriter videoWriter;
@@ -206,5 +206,5 @@ public:
 
 	ofColor averageColorOfImage;
 
-	float versionNumber = 0.1.0;
+	std::string versionNumber = "0.1.1";
 };

@@ -26,14 +26,11 @@ I also wanted to created an application with a gui to give more immediate visual
 ### Dependencies
 
 This application uses [OpenFrameworks](https://openframeworks.cc/) and c++ for the pixel sorting, image loading, and video loading/playback.
-[OpenCV](https://opencv.org/) is used to take the modified pixels from each frame and collect them into an .mp4 file
+[OpenCV](https://opencv.org/) is used to take the modified pixels from each frame and collect them into an .mp4 file. UI is made using [ofxDatGui](https://github.com/braitsch/ofxDatGui).
 
-### Usage
+### Installation and Usage
 
-This application is still in development. I plan to publish some iterations in the Releases section when the code is in a more user friendly state.
-Documentation and a walkthrough video will be made as well.
-
-Initial release is very close!
+You can find installation instructions and documentation [here](https://davidmclaughlin208.github.io/PixelSorting/index.html)!
 
 ### Supported file types
 
@@ -50,35 +47,8 @@ I have verified all the listed image types are supported but have only verified 
 
 ### Caveats
 
-<details>
-<summary>Click to expand</summary>
-
-In order for an image to be sorted at any angle, each image pixel needs to be rotated within a 2D matrix. Since contents of a 2D matrix cannot be cleanly rotated at anything other than 90, 180, or 270 degrees, the 'warpAffine' function
-used by OpenCV will perform some color interpolation on the pixels to make the rotated image retain the same dimensions and all have the pixels still be adjacent to each other. After the sorting is performed, when saving an image, it must be rotated back to a 0 degree orientation.
-These multiple rotations will cause the image to become slightly blurred (not very noticable though) and there may be some color artifacts at parts of the image borders. Additionally, these rotations increase the time it takes for each sort. This can signficantly increase the time required to
-sort a video as each frame must be rotated, sorted, and then rotated back to be saved to the new video file.
-
-None of the above issues apply when sorting an image at 0 degree angle (default, horiztonal)
-
----
-
-When sorting images it is recommended to have at least 1GB of RAM (2GB for 4k images). If sorting videos you may need significantly more RAM (4GB, 8GB depending on the size of the video file)
-
-Sorted video files seem to be significantly larger in memory than the unsorted version of the video (6.7MB -> 70MB). This is known issue with OpenCV video writer although I plan to look into ways to minimize this increase in size.
-
-As of now a video file can only be sorted in one go, start to finish (or until you press "Stop"). If you computer shuts off, goes to sleep, or for any reason any issue occurs during the sorting, the whole *new* video file will be corrupted and the sorting process will need to restart (the original file will not be corrupted)
-In the future I would like to add the feature of sorting the video in segments and stitching the together at the end so if any issue occurs it will be contained to the current segment.
-
-</details>
-
-If the following error is displayed when trying to launch the executable, then latest version of Microsoft c++ redistributable 2015-2019 needs to be installed:
-The code execution could not proceed because (LIBRARYNAME).dll was not found. Reinstalling the program may fix the problem.
-
 ### Remaining items before initial release:
-  * Fix mask saving filename
-  * Stop sorting when loading a new image
-  * Include default video and mask for testing and demonstration purposes
-  * Write documentation and create walkthrough video
+  * Create installation and usage walkthrough video
 
 ### Todo List
 
@@ -99,9 +69,9 @@ The code execution could not proceed because (LIBRARYNAME).dll was not found. Re
   * Add ability to scrub through videos to select start and end frame, see what intervals will be sorted at that frame
   * Break up video sorting to multiple files and concatenate them all at the end so in the case of any issues not all progress is lost
   * Add ability to apply curves or easing functions to parameter values to change them over the course of a video sorting
-* Look into Mac and Linux support
-* Refine sorting algorithm to improev performance
+* Look into Linux support
+* Fix video loading issues with Mac version
+* Refine sorting algorithm to improve performance
 
 ### Examples
 ![](media/GUIExample.PNG)
-![](media/SortedVideo.gif)
