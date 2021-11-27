@@ -2,13 +2,15 @@
 
 ### What is pixel sorting?
 
-In short, pixel sorting is taking an interval of pixels in a row or column from an image and rearranging or sorting them based on some criteria.
+In short, pixel sorting is a generative art technique developed by [Kim Asendorf](https://github.com/kimasendorf/ASDFPixelSort). It is done by taking an interval of pixels in a row or column from an image and rearranging or sorting them based on some criteria.
 
 The intervals can be determined arbitrarily, such as seleccting all consecutive pixels within a certain Brightness window, and then sorting them by some property such as brightness values.
 
 For more details and a visual explanation check this blog post by satyarth [here](http://satyarth.me/articles/pixel-sorting/).
 
 ### System Requirements
+
+I have made follow-along video for installation instructions [here](https://youtube.com/playlist?list=PLmmjw91hk5iWjPQqv2EueRfAAFfbJiTAz).
 
 * Windows 64-bit OS
 * Latest version of [Microsoft Visual C++ Redistributable 2015-2019](https://docs.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist?view=msvc-170). Choose the x64 version as this application will need to run on 64-bit Windows OS.
@@ -29,7 +31,7 @@ For more details and a visual explanation check this blog post by satyarth [here
 * Download the SourceCode.zip file in the [Releases](https://github.com/DavidMcLaughlin208/PixelSorting/releases) section.
 * Unzip the folder to a location on your computer.
 * Extract the contents to a folder of your choosing
-* Open the `PixelSorting-v0.1.0` folder
+* Open the `PixelSorting-v0.1.1` folder
 * Open the `bin` folder
 * Launch `PixelSortium.exe` (Windows will warn you of an Untrusted Publisher. Click "More Info" and then "Run Anyway")
 * All images and videos you want to be able to load into the application will need to be placed in the `data/images` folder (this can be done when the application is open as well)
@@ -45,6 +47,8 @@ This is caused due to not having the latest version of [Microsoft Visual C++ Red
 
 
 ### Usage
+
+I have made feature walkthrough video [here](https://youtube.com/playlist?list=PLmmjw91hk5iWjPQqv2EueRfAAFfbJiTAz).
 
 At the top of the screen you will see some diagnostic information.
 

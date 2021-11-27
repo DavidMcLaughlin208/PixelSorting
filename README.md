@@ -2,7 +2,7 @@
 
 ### What is pixel sorting?
 
-In short, pixel sorting is taking an interval of pixels in a row or column from an image and sorting them based on some criteria.
+In short, pixel sorting is a generative art technique developed by [Kim Asendorf](https://github.com/kimasendorf/ASDFPixelSort). It is done by taking an interval of pixels in a row or column from an image and rearranging or sorting them based on some criteria.
 
 The intervals can be determined arbitrarily, such as seleccting all consecutive pixels under a certain brightness threshold, and then sorting them by some property such as brightness values.
 
@@ -10,18 +10,18 @@ For more details and a visual explanation check this blog post by satyarth [here
 
 ![](media/seacliffsorted.jpeg)
 
-![](media/SortedVideo.gif)
+![](media/OceanWavesSorted.gif)
 
 ### Why make this program?
 
 satyarth has already created a comprehensive [command line tool](https://github.com/satyarth/pixelsort) written in Python to perform pixel sorting on images. 
-I wanted to be able to easily apply pixel sorting to videos files but that would require a lot of manual work using existing tools. 
+I wanted to be able to easily apply pixel sorting to videos files which would require a lot of manual work using existing tools. 
 
 Additionally, I wanted to implement multithreading on the pixel sort algorithm to speed it up which will be especially useful for sorting long videos.
 The single threaded python application can sort a 1920x1200 image at a 45 degree angle with thresholds set from 0.25 - 0.8 (default parameters) in about 17 seconds.
 This c++ multithreaded application can perform the same sort on the same image in 2.1 seconds while showing the image as its being sorted and allowing for rapid iteration.
 
-I also wanted to created an application with a gui to give more immediate visual feedback to the user and add other tools such as mask drawing in app.
+I also wanted to create an application with a gui to give more immediate visual feedback to the user and add other tools such as mask drawing in app.
 
 ### Dependencies
 
@@ -31,6 +31,8 @@ This application uses [OpenFrameworks](https://openframeworks.cc/) and c++ for t
 ### Installation and Usage
 
 You can find installation instructions and documentation [here](https://davidmclaughlin208.github.io/PixelSorting/index.html)!
+
+Also, I have made videos you can follow along with for installation and a feature walkthough video [here](https://youtube.com/playlist?list=PLmmjw91hk5iWjPQqv2EueRfAAFfbJiTAz).
 
 ### Supported file types
 
@@ -45,12 +47,7 @@ AVI, MKV, MP4, FLV, MPEG, MOV, TS, M2TS, WMV, RM, RMVB, OGM, WebM
 
 I have verified all the listed image types are supported but have only verified MP4 and MKV video file types personally.
 
-### Caveats
-
-### Remaining items before initial release:
-  * Create installation and usage walkthrough video
-
-### Todo List
+### Feature Enhancement Ideas
 
 * Enhance masking functionality
   * Use mask as intervals
@@ -72,6 +69,12 @@ I have verified all the listed image types are supported but have only verified 
 * Look into Linux support
 * Fix video loading issues with Mac version
 * Refine sorting algorithm to improve performance
+* Lots of refactoring to make the code less tightly coupled and more modular
 
 ### Examples
 ![](media/GUIExample.PNG)
+
+### Other Pixel Sorting Scripts/Programs
+
+* [MadPixelSort](https://github.com/madlitch/MadPixelSort-Legacy)
+* [pixelsort python CLI](https://github.com/satyarth/pixelsort)
