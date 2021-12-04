@@ -296,7 +296,7 @@ void ofApp::update() {
 			threadList.push_back(std::thread(pixelSortRow, sortingIndex, ofImg.getWidth(), ofImg.getHeight(), std::ref(imagePixels), std::ref(maskPixels), currentlySelectedSortParameter, threshold, upperThreshold, useMask, maskThreshold, currentImageAngle, xPadding, yPadding));
 			sortingIndex += 1;
 
-			if (sortingIndex >= image.getHeight() - 1) {
+			if (sortingIndex >= ofImg.getHeight() - 1) {
 				sortingIndex = 0;
 				sortComplete = true;
 				
@@ -306,7 +306,7 @@ void ofApp::update() {
 		for (int i = 0; i < threadList.size(); i++) {
 			threadList[i].join();
 		}
-		image.setFromPixels(imagePixels);
+		ofImg.setFromPixels(imagePixels);
 		if (sortComplete) {
 			infoPanel->setProgress(1);
 			timeEnd = std::chrono::high_resolution_clock::now();
@@ -316,7 +316,7 @@ void ofApp::update() {
 			infoPanel->sortTimeTaken(timeTaken);
 		}
 		else {
-			infoPanel->setProgress((float)sortingIndex / (float)image.getHeight());
+			infoPanel->setProgress((float)sortingIndex / (float)ofImg.getHeight());
 		}
 
 		if (sortComplete) {
@@ -324,7 +324,7 @@ void ofApp::update() {
 			if (currentMode == Mode::Image) {
 				started = false;
 				sortButton->setLabel(SORTBUTTONTITLE);
-				image.setFromPixels(imagePixels);
+				ofImg.setFromPixels(imagePixels);
 				//currentImageAngle = 0;
 				infoPanel->setActiveStatus(IDLE);
 			}
@@ -377,17 +377,17 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 		return;
 	}
 	std::chrono::steady_clock::time_point rotateStart = std::chrono::high_resolution_clock::now();
-	int size = image.getWidth() * image.getHeight();
+	int size = ofImg.getWidth() * ofImg.getHeight();
 	int bpp = imagePixels.getBytesPerPixel();
 	cv::Mat src;
-	src = cv::Mat_<cv::Vec4b>(image.getHeight(), image.getWidth());
+	src = cv::Mat_<cv::Vec4b>(ofImg.getHeight(), ofImg.getWidth());
 
 	// Multithread on transferring pixels from OF data structure to OpenCV data structure
 	// This is a (necessary) waste of time regardless. Could potentially rewrite all of the sorting and image logic to just use OpenCV
 	// to eliminate this entirely
 	vector<std::thread> threadList;
 	for (int i = 0; i < pixelTransferThreadCount; i++) {
-		threadList.push_back(std::thread(transferFromPixelsToMat, std::ref(imagePixels), std::ref(src), i, size / pixelTransferThreadCount, i == pixelTransferThreadCount - 1, image.getWidth(), image.getHeight()));
+		threadList.push_back(std::thread(transferFromPixelsToMat, std::ref(imagePixels), std::ref(src), i, size / pixelTransferThreadCount, i == pixelTransferThreadCount - 1, ofImg.getWidth(), ofImg.getHeight()));
 	}
 	for (int i = 0; i < threadList.size(); i++) {
 		threadList[i].join();
@@ -418,13 +418,13 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	cv::warpAffine(src, dst, rot, boxSize, cv::INTER_CUBIC);
 
 
-	image.resize(dst.cols, dst.rows);
-	size = image.getWidth() * image.getHeight();
+	ofImg.resize(dst.cols, dst.rows);
+	size = ofImg.getWidth() * ofImg.getHeight();
 	imagePixels.allocate(dst.cols, dst.rows, OF_IMAGE_COLOR_ALPHA);
 	vector<std::thread> threadList2;
 	// Multithread on transferring pixels back from OpenCV format to OF format...
 	for (int i = 0; i < pixelTransferThreadCount; i++) {
-		threadList2.push_back(std::thread(transferFromMatToPixels, std::ref(imagePixels), std::ref(dst), i, size / pixelTransferThreadCount, i == pixelTransferThreadCount - 1, image.getWidth(), image.getHeight()));
+		threadList2.push_back(std::thread(transferFromMatToPixels, std::ref(imagePixels), std::ref(dst), i, size / pixelTransferThreadCount, i == pixelTransferThreadCount - 1, ofImg.getWidth(), ofImg.getHeight()));
 	}
 	for (int i = 0; i < threadList2.size(); i++) {
 		threadList2[i].join();
@@ -441,38 +441,28 @@ void ofApp::saveFrameToVideo() {
 	infoPanel->setActiveStatus("Saving Frame To Video");
 	if (currentImageAngle != 0) {
 		rotateImage(-currentImageAngle, true);
-		int originalImageX = image.getWidth() / 2 - unrotatedWidth / 2;
-		int originalImageY = image.getHeight() / 2 - unrotatedHeight / 2;
+		int originalImageX = ofImg.getWidth() / 2 - unrotatedWidth / 2;
+		int originalImageY = ofImg.getHeight() / 2 - unrotatedHeight / 2;
 		imagePixels.crop(originalImageX, originalImageY, unrotatedWidth, unrotatedHeight);
-		image.resize(imagePixels.getWidth(), imagePixels.getHeight());
-		image.setFromPixels(imagePixels);
+		ofImg.resize(imagePixels.getWidth(), imagePixels.getHeight());
+		ofImg.setFromPixels(imagePixels);
 	}
-	int size = imagePixels.getWidth() * imagePixels.getHeight();
-	int bpp = imagePixels.getBytesPerPixel();
-	/*cv::Mat temp = cv::Mat_<cv::Vec4b>(imagePixels.getHeight(), imagePixels.getWidth());
-	temp.data = imagePixels.getData();
-	cvtColor(temp, temp, cv::COLOR_RGBA2BGR);*/
 
-	cv::Mat mat = cv::Mat_<cv::Vec3b>(imagePixels.getHeight(), imagePixels.getWidth());
-	for (int i = 0; i < size; i++) {
-		int actualI = i * bpp;
-		int y = int((float)i / (float)imagePixels.getWidth());
-		int x = i - y * imagePixels.getWidth();
-		mat.at<cv::Vec3b>(y, x)[0] = imagePixels[actualI + 2];
-		mat.at<cv::Vec3b>(y, x)[1] = imagePixels[actualI + 1];
-		mat.at<cv::Vec3b>(y, x)[2] = imagePixels[actualI + 0];
-	}
-	videoWriter.write(mat);
-	//cvtColor(temp, temp, cv::COLOR_BGR2RGBA);
+
+	cv::Mat temp = cv::Mat_<cv::Vec4b>(imagePixels.getHeight(), imagePixels.getWidth());
+	temp.data = imagePixels.getData();
+	cvtColor(temp, temp, cv::COLOR_RGBA2BGR);
+	videoWriter.write(temp);
+	cvtColor(temp, temp, cv::COLOR_BGR2RGBA);
 }
 
 //--------------------------------------------------------------
 void ofApp::draw() {
-	if (ofImg.isAllocated()) {
+	/*if (ofImg.isAllocated()) {
 		ofSetColor(255, 255, 255, 255);
 		ofImg.draw(0, 0);
-	}
-	if (image.isAllocated()) {
+	}*/
+	if (ofImg.isAllocated()) {
 		int wid = unrotatedWidth * currentRatio;
 		int hei = unrotatedHeight * currentRatio;
 		// Since the image may be rotated and have a black buffer area we rotate it and draw it to an FBO
@@ -483,9 +473,9 @@ void ofApp::draw() {
 		ofPushMatrix();
 		ofTranslate(unrotatedWidth / 2, unrotatedHeight / 2 );
 		ofRotate(currentImageAngle, 0, 0, 1);
-		ofTranslate(-image.getWidth() / 2, -image.getHeight() / 2);
+		ofTranslate(-ofImg.getWidth() / 2, -ofImg.getHeight() / 2);
 		ofPushMatrix();
-		image.draw(0,0);
+		ofImg.draw(0,0);
 		ofPopMatrix();
 		ofPopMatrix();
 		imageFbo.end();
@@ -593,7 +583,7 @@ void ofApp::loadMask(std::string fileName) {
 void ofApp::loadImage(std::string fileName) {
 	videoPlayerCv.release();
 	videoWriter.release();
-	image.clear();
+	ofImg.clear();
 	ofFilePath filePath;
 	std::string extension = filePath.getFileExt(fileName);
 	std::transform(extension.begin(), extension.end(), extension.begin(),
@@ -601,12 +591,16 @@ void ofApp::loadImage(std::string fileName) {
 
 	if (std::find(imageExtensions.begin(), imageExtensions.end(), extension) != imageExtensions.end()) {
 		infoPanel->setActiveStatus("Loading Image");
-		image.load("images/" + fileName);
-		image.setImageType(OF_IMAGE_COLOR_ALPHA);
+		ofImg.load("images/" + fileName);
+		ofImg.setImageType(OF_IMAGE_COLOR_ALPHA);
+		imagePixels = ofImg.getPixels();
+		cvImg = cv::Mat_<cv::Vec4b>(imagePixels.getHeight(), imagePixels.getWidth());
+		cvImg.data = ofImg.getPixels().getData();
+
 		currentMode = Mode::Image;
-		unrotatedWidth = image.getWidth();
-		unrotatedHeight = image.getHeight();
-		imagePixels = image.getPixels();
+		unrotatedWidth = ofImg.getWidth();
+		unrotatedHeight = ofImg.getHeight();
+		imagePixels = ofImg.getPixels();
 		paddingAddedToImage = false;
 		currentImageAngle = 0;
 		imageAnchorX = 0;
@@ -720,7 +714,7 @@ void ofApp::start(ofxDatGuiButtonEvent e) {
 		sortButton->setLabel(SORTBUTTONTITLE);
 		videoWriter.release();
 		videoPlayerCv.release();
-		image.clear();
+		ofImg.clear();
 		// Display to the user that the video was saved
 	}
 }
@@ -814,22 +808,22 @@ void ofApp::populateImageDir(ofDirectory dir, ofxDatGuiScrollView* scrollView) {
 }
 
 void ofApp::saveCurrentImage(ofxDatGuiButtonEvent e) {
-	if (image.isAllocated() && !started) {
+	if (ofImg.isAllocated() && !started) {
 		infoPanel->setActiveStatus("Saving Image");
 		ofPixels copy;
 		copy.allocate(imagePixels.getWidth(), imagePixels.getHeight(), imagePixels.getImageType());
 		imagePixels.pasteInto(copy, 0, 0);
 		rotateImage(-currentImageAngle, paddingAddedToImage);
-		int originalImageX = image.getWidth() / 2 - unrotatedWidth / 2;
-		int originalImageY = image.getHeight() / 2 - unrotatedHeight / 2;
+		int originalImageX = ofImg.getWidth() / 2 - unrotatedWidth / 2;
+		int originalImageY = ofImg.getHeight() / 2 - unrotatedHeight / 2;
 		imagePixels.crop(originalImageX, originalImageY, unrotatedWidth, unrotatedHeight);
-		image.resize(imagePixels.getWidth(), imagePixels.getHeight());
-		image.setFromPixels(imagePixels);
+		ofImg.resize(imagePixels.getWidth(), imagePixels.getHeight());
+		ofImg.setFromPixels(imagePixels);
 		std::string fullName = getTimeStampedFileName(currentFileName, "", "");
-		image.save("images/" + fullName);
+		ofImg.save("images/" + fullName);
 		currentFileName = fullName;
 		imagePixels = copy;
-		image.setFromPixels(imagePixels);
+		ofImg.setFromPixels(imagePixels);
 	}
 	infoPanel->setActiveStatus(IDLE);
 }

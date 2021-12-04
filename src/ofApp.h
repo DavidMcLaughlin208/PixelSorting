@@ -113,7 +113,6 @@ public:
 	int directoryRefreshCounter = 0;
 	size_t imageDirCount = 0;
 	size_t maskDirCount = 0;
-	ofImage image;
 	int unrotatedWidth;
 	int unrotatedHeight;
 	int xPadding;
