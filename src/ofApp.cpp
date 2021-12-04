@@ -18,6 +18,29 @@ std::string ofApp::ANGLESLIDERTITLE = "Angle";
 std::string ofApp::THREADCOUNTSLIDERTITLE = "Thread Count";
 std::string ofApp::IDLE = "Idle";
 
+string type2str(int type) {
+	string r;
+
+	uchar depth = type & CV_MAT_DEPTH_MASK;
+	uchar chans = 1 + (type >> CV_CN_SHIFT);
+
+	switch (depth) {
+	case CV_8U:  r = "8U"; break;
+	case CV_8S:  r = "8S"; break;
+	case CV_16U: r = "16U"; break;
+	case CV_16S: r = "16S"; break;
+	case CV_32S: r = "32S"; break;
+	case CV_32F: r = "32F"; break;
+	case CV_64F: r = "64F"; break;
+	default:     r = "User"; break;
+	}
+
+	r += "C";
+	r += (chans + '0');
+
+	return r;
+}
+
 void transferFromPixelsToMat(ofPixels& pixelsRef, cv::Mat& matRef, int section, int sectionLength, bool endingSection, int width, int height) {
 	int bpp = pixelsRef.getBytesPerPixel();
 	int start = section * sectionLength;
@@ -270,7 +293,7 @@ void ofApp::update() {
 		infoPanel->setActiveStatus("Sorting");
 		vector<std::thread> threadList;
 		for (int i = 0; i < threadCount; i++) {
-			threadList.push_back(std::thread(pixelSortRow, sortingIndex, image.getWidth(), image.getHeight(), std::ref(imagePixels), std::ref(maskPixels), currentlySelectedSortParameter, threshold, upperThreshold, useMask, maskThreshold, currentImageAngle, xPadding, yPadding));
+			threadList.push_back(std::thread(pixelSortRow, sortingIndex, ofImg.getWidth(), ofImg.getHeight(), std::ref(imagePixels), std::ref(maskPixels), currentlySelectedSortParameter, threshold, upperThreshold, useMask, maskThreshold, currentImageAngle, xPadding, yPadding));
 			sortingIndex += 1;
 
 			if (sortingIndex >= image.getHeight() - 1) {
@@ -307,8 +330,8 @@ void ofApp::update() {
 			}
 			else if (currentMode == Mode::Video) {
 				saveFrameToVideo();
-				if (videoPlayer.getCurrentFrame() >= videoPlayer.getTotalNumFrames() - 1) {
-					videoPlayer.close();
+				if (videoPlayerCv.get(cv::CAP_PROP_POS_FRAMES) == videoPlayerCv.get(cv::CAP_PROP_FRAME_COUNT)) {
+					videoPlayerCv.release();
 					videoWriter.release();
 					started = false;
 					sortButton->setLabel(SORTBUTTONTITLE);
@@ -316,13 +339,12 @@ void ofApp::update() {
 					infoPanel->setActiveStatus(IDLE);
 				}
 				else {
-					videoPlayer.nextFrame();
-					imagePixels = videoPlayer.getPixels();
-					imagePixels.setImageType(OF_IMAGE_COLOR_ALPHA);
-					image.clear();
-					image.setFromPixels(imagePixels);
-					image.setImageType(OF_IMAGE_COLOR_ALPHA);
-					image.update();
+					videoPlayerCv >> cvImg;
+					cvtColor(cvImg, cvImg, cv::COLOR_BGR2RGBA);
+					ofImg.clear();
+					ofImg.resize(cvImg.cols, cvImg.rows);
+					ofImg.setFromPixels(cvImg.data, cvImg.cols, cvImg.rows, OF_IMAGE_COLOR_ALPHA);
+					imagePixels = ofImg.getPixels();
 					currentImageAngle = 0;
 					if (currentImageAngle != angle) {
 						infoPanel->setActiveStatus("Rotating Image");
@@ -331,9 +353,8 @@ void ofApp::update() {
 						paddingAddedToImage = true;
 						currentImageAngle = angle;
 					}
-					std::cout << "Starting frame " << videoPlayer.getCurrentFrame() << " out of " << videoPlayer.getTotalNumFrames() << std::endl;
 					timeStart = std::chrono::high_resolution_clock::now();
-					infoPanel->setFrameCounter(videoPlayer.getCurrentFrame(), videoPlayer.getTotalNumFrames());
+					infoPanel->setFrameCounter(videoPlayerCv.get(cv::CAP_PROP_POS_FRAMES), videoPlayerCv.get(cv::CAP_PROP_FRAME_COUNT));
 				}
 			}
 		}
@@ -408,8 +429,9 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	for (int i = 0; i < threadList2.size(); i++) {
 		threadList2[i].join();
 	}
-	image.setFromPixels(imagePixels);
-	imagePixels = image.getPixels();
+	
+	ofImg.setFromPixels(imagePixels);
+	imagePixels = ofImg.getPixels();
 	std::chrono::steady_clock::time_point rotateEnd = std::chrono::high_resolution_clock::now();
 	long timeTaken = std::chrono::duration_cast<std::chrono::milliseconds>(rotateEnd - rotateStart).count();
 	std::cout << "Rotating image took " << timeTaken << " milliseconds for rotation diff of " << angle << " degrees." << std::endl;
@@ -427,21 +449,29 @@ void ofApp::saveFrameToVideo() {
 	}
 	int size = imagePixels.getWidth() * imagePixels.getHeight();
 	int bpp = imagePixels.getBytesPerPixel();
-	cv::Mat mat;
-	mat = cv::Mat_<cv::Vec3b>(imagePixels.getHeight(), imagePixels.getWidth());
+	/*cv::Mat temp = cv::Mat_<cv::Vec4b>(imagePixels.getHeight(), imagePixels.getWidth());
+	temp.data = imagePixels.getData();
+	cvtColor(temp, temp, cv::COLOR_RGBA2BGR);*/
+
+	cv::Mat mat = cv::Mat_<cv::Vec3b>(imagePixels.getHeight(), imagePixels.getWidth());
 	for (int i = 0; i < size; i++) {
 		int actualI = i * bpp;
-		int y = int((float)i / (float)image.getWidth());
-		int x = i - y * image.getWidth();
+		int y = int((float)i / (float)imagePixels.getWidth());
+		int x = i - y * imagePixels.getWidth();
 		mat.at<cv::Vec3b>(y, x)[0] = imagePixels[actualI + 2];
 		mat.at<cv::Vec3b>(y, x)[1] = imagePixels[actualI + 1];
 		mat.at<cv::Vec3b>(y, x)[2] = imagePixels[actualI + 0];
 	}
 	videoWriter.write(mat);
+	//cvtColor(temp, temp, cv::COLOR_BGR2RGBA);
 }
 
 //--------------------------------------------------------------
 void ofApp::draw() {
+	if (ofImg.isAllocated()) {
+		ofSetColor(255, 255, 255, 255);
+		ofImg.draw(0, 0);
+	}
 	if (image.isAllocated()) {
 		int wid = unrotatedWidth * currentRatio;
 		int hei = unrotatedHeight * currentRatio;
@@ -503,7 +533,7 @@ void ofApp::draw() {
 	}
 	int scaledWidth = unrotatedWidth * currentRatio;
 	int scaledHeight = unrotatedHeight * currentRatio;
-	ofFill();
+	/*ofFill();
 	ofSetColor(50, 50, 50);
 	ofRect(0, 0, ofGetWidth(), imageAnchorY);
 	ofRect(0, 0, imageAnchorX, ofGetHeight());
@@ -514,7 +544,7 @@ void ofApp::draw() {
 	ofRect(0, 0, ofGetWidth(), imageAnchorY);
 	ofRect(0, 0, imageAnchorX, ofGetHeight());
 	ofRect(scaledWidth + imageAnchorX, 0, ofGetWidth() - scaledWidth + imageAnchorX, ofGetHeight());
-	ofRect(0, scaledHeight + imageAnchorY, maxWidth, ofGetHeight() - scaledHeight + imageAnchorY);
+	ofRect(0, scaledHeight + imageAnchorY, maxWidth, ofGetHeight() - scaledHeight + imageAnchorY);*/
 
 	imageScrollView->draw();
 	maskImagesScrollView->draw();
@@ -561,7 +591,8 @@ void ofApp::loadMask(std::string fileName) {
 }
 
 void ofApp::loadImage(std::string fileName) {
-	videoPlayer.close();
+	videoPlayerCv.release();
+	videoWriter.release();
 	image.clear();
 	ofFilePath filePath;
 	std::string extension = filePath.getFileExt(fileName);
@@ -580,40 +611,43 @@ void ofApp::loadImage(std::string fileName) {
 		currentImageAngle = 0;
 		imageAnchorX = 0;
 		imageAnchorY = 0;
+		xPadding = 0;
+		yPadding = 0;
 		infoPanel->setFrameCounter(0, 0);
 	}
 	else if (std::find(videoExtensions.begin(), videoExtensions.end(), extension) != videoExtensions.end()) {
 		infoPanel->setActiveStatus("Loading Video");
-		if (videoPlayer.isLoaded()) {
-			videoPlayer.close();
+
+		if (videoPlayerCv.isOpened()) {
+			videoPlayerCv.release();
 		}
 		if (videoWriter.isOpened()) {
 			videoWriter.release();
 		}
-		videoPlayer.load("images/" + fileName);
-		if (!videoPlayer.isLoaded()) {
+		bool opened = videoPlayerCv.open("data/images/" + fileName);
+		if (!videoPlayerCv.isOpened()) {
 			// Display error message to user
 			infoPanel->setActiveStatus(IDLE);
 			return;
 		}
-		videoPlayer.firstFrame();
-		videoPlayer.play();
-		videoPlayer.setPaused(true);
-		imagePixels = videoPlayer.getPixels();
-		imagePixels.setImageType(OF_IMAGE_COLOR_ALPHA);
-		image.setFromPixels(imagePixels);
-		image.setImageType(OF_IMAGE_COLOR_ALPHA);
-		image.update();
-		unrotatedWidth = image.getWidth();
-		unrotatedHeight = image.getHeight();
+		videoPlayerCv.set(cv::CAP_PROP_POS_FRAMES, 0);
+		videoPlayerCv >> cvImg;
+		std::string type = type2str(cvImg.type());
+		cv::cvtColor(cvImg, cvImg, cv::COLOR_BGR2RGBA);
+		ofImg.setFromPixels(cvImg.data,cvImg.cols, cvImg.rows, OF_IMAGE_COLOR_ALPHA);
+		imagePixels = ofImg.getPixels();
+
+		unrotatedWidth = cvImg.cols;
+		unrotatedHeight = cvImg.rows;
 		paddingAddedToImage = false;
 		currentImageAngle = 0;
 		imageAnchorX = 0;
 		imageAnchorY = 0;
-
+		xPadding = 0;
+		yPadding = 0;
 		
 		currentMode = Mode::Video;
-		infoPanel->setFrameCounter(0, videoPlayer.getTotalNumFrames());
+		infoPanel->setFrameCounter(0, videoPlayerCv.get(cv::CAP_PROP_FRAME_COUNT));
 	}
 	else {
 		// Display some error message
@@ -673,8 +707,8 @@ void ofApp::start(ofxDatGuiButtonEvent e) {
 			currentImageAngle = angle;
 		}
 		if (currentMode == Mode::Video) {
-			infoPanel->setFrameCounter(videoPlayer.getCurrentFrame(), videoPlayer.getTotalNumFrames());
-			float fps = videoPlayer.getTotalNumFrames() / videoPlayer.getDuration();
+			infoPanel->setFrameCounter(videoPlayerCv.get(cv::CAP_PROP_POS_FRAMES), videoPlayerCv.get(cv::CAP_PROP_FRAME_COUNT));
+			float fps = videoPlayerCv.get(cv::CAP_PROP_FPS);
 			videoWriter = cv::VideoWriter("data/images/" + getTimeStampedFileName(currentFileName, ".mp4", ""), cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(unrotatedWidth, unrotatedHeight), true);
 		}
 	}
@@ -685,7 +719,7 @@ void ofApp::start(ofxDatGuiButtonEvent e) {
 		infoPanel->setActiveStatus(IDLE);
 		sortButton->setLabel(SORTBUTTONTITLE);
 		videoWriter.release();
-		videoPlayer.close();
+		videoPlayerCv.release();
 		image.clear();
 		// Display to the user that the video was saved
 	}
@@ -1134,6 +1168,8 @@ void ofApp::gotMessage(ofMessage msg){
 void ofApp::dragEvent(ofDragInfo dragInfo){ 
 
 }
+
+
 
 
 

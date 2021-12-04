@@ -155,7 +155,10 @@ public:
 	int pixelTransferThreadCount = 14;
 
 	cv::VideoWriter videoWriter;
-	ofVideoPlayer videoPlayer;
+	// https://docs.opencv.org/3.4/d4/d15/group__videoio__flags__base.html#gaeb8dd9c89c10a5c63c139bf7c4f5704d
+	cv::VideoCapture videoPlayerCv;
+	cv::Mat cvImg;
+	ofImage ofImg;
 
 	std::chrono::steady_clock::time_point timeStart = std::chrono::high_resolution_clock::now();
 	std::chrono::steady_clock::time_point timeEnd = std::chrono::high_resolution_clock::now();
