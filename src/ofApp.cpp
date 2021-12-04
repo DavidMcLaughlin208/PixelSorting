@@ -41,38 +41,6 @@ string type2str(int type) {
 	return r;
 }
 
-void transferFromPixelsToMat(ofPixels& pixelsRef, cv::Mat& matRef, int section, int sectionLength, bool endingSection, int width, int height) {
-	int bpp = pixelsRef.getBytesPerPixel();
-	int start = section * sectionLength;
-	int end = endingSection ? width * height : (section + 1) * sectionLength;
-	for (int i = start; i < end; i++) {
-		int actualI = i * bpp;
-		int y = int((double)i / (double)width);
-		int x = i - (double)y * width;
-		// The mismatch of indices here is because Mat is in BGRA and pixels is in RGBA format
-		matRef.at<cv::Vec4b>(y, x)[0] = pixelsRef[actualI + 2];
-		matRef.at<cv::Vec4b>(y, x)[1] = pixelsRef[actualI + 1];
-		matRef.at<cv::Vec4b>(y, x)[2] = pixelsRef[actualI + 0];
-		matRef.at<cv::Vec4b>(y, x)[3] = pixelsRef[actualI + 3];
-	}
-}
-
-void transferFromMatToPixels(ofPixels& pixelsRef, cv::Mat& matRef, int section, int sectionLength, bool endingSection, int width, int height) {
-	int bpp = pixelsRef.getBytesPerPixel();
-	int start = section * sectionLength;
-	int end = endingSection ? width * height : (section + 1) * sectionLength;
-	for (int i = start; i < end; i++) {
-		int actualI = i * bpp;
-		int y = int((double)i / (double)width);
-		int x = i - (double)y * width;
-		// The mismatch of indices here is because Mat is in BGRA and pixels is in RGBA format
-		pixelsRef[actualI + 2] = matRef.at<cv::Vec4b>(y, x)[0];
-		pixelsRef[actualI + 1] = matRef.at<cv::Vec4b>(y, x)[1];
-		pixelsRef[actualI + 0] = matRef.at<cv::Vec4b>(y, x)[2];
-		pixelsRef[actualI + 3] = matRef.at<cv::Vec4b>(y, x)[3];
-	}
-}
-
 struct BrightnessComparator {
 	bool operator() (ofColor i, ofColor j) { return (i.getBrightness() < j.getBrightness()); }
 } brightnessComparator;
@@ -381,17 +349,8 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	int bpp = imagePixels.getBytesPerPixel();
 	cv::Mat src;
 	src = cv::Mat_<cv::Vec4b>(ofImg.getHeight(), ofImg.getWidth());
-
-	// Multithread on transferring pixels from OF data structure to OpenCV data structure
-	// This is a (necessary) waste of time regardless. Could potentially rewrite all of the sorting and image logic to just use OpenCV
-	// to eliminate this entirely
-	vector<std::thread> threadList;
-	for (int i = 0; i < pixelTransferThreadCount; i++) {
-		threadList.push_back(std::thread(transferFromPixelsToMat, std::ref(imagePixels), std::ref(src), i, size / pixelTransferThreadCount, i == pixelTransferThreadCount - 1, ofImg.getWidth(), ofImg.getHeight()));
-	}
-	for (int i = 0; i < threadList.size(); i++) {
-		threadList[i].join();
-	}
+	src.data = imagePixels.getData();
+	cvtColor(src, src, cv::COLOR_RGBA2BGRA);
 	
 	// get rotation matrix for rotating the image around its center in pixel coordinates
 	cv::Point2f center((src.cols - 1) / 2.0, (src.rows - 1) / 2.0);
@@ -417,21 +376,11 @@ void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
 	// WarpAffine is a very useful function but will cause the resulting image to be slightly blurry if not rotated at right angles
 	cv::warpAffine(src, dst, rot, boxSize, cv::INTER_CUBIC);
 
-
+	cvtColor(dst, dst, cv::COLOR_BGRA2RGBA);
 	ofImg.resize(dst.cols, dst.rows);
-	size = ofImg.getWidth() * ofImg.getHeight();
-	imagePixels.allocate(dst.cols, dst.rows, OF_IMAGE_COLOR_ALPHA);
-	vector<std::thread> threadList2;
-	// Multithread on transferring pixels back from OpenCV format to OF format...
-	for (int i = 0; i < pixelTransferThreadCount; i++) {
-		threadList2.push_back(std::thread(transferFromMatToPixels, std::ref(imagePixels), std::ref(dst), i, size / pixelTransferThreadCount, i == pixelTransferThreadCount - 1, ofImg.getWidth(), ofImg.getHeight()));
-	}
-	for (int i = 0; i < threadList2.size(); i++) {
-		threadList2[i].join();
-	}
-	
-	ofImg.setFromPixels(imagePixels);
+	ofImg.setFromPixels(dst.data, dst.cols, dst.rows, OF_IMAGE_COLOR_ALPHA);
 	imagePixels = ofImg.getPixels();
+	
 	std::chrono::steady_clock::time_point rotateEnd = std::chrono::high_resolution_clock::now();
 	long timeTaken = std::chrono::duration_cast<std::chrono::milliseconds>(rotateEnd - rotateStart).count();
 	std::cout << "Rotating image took " << timeTaken << " milliseconds for rotation diff of " << angle << " degrees." << std::endl;
@@ -458,10 +407,6 @@ void ofApp::saveFrameToVideo() {
 
 //--------------------------------------------------------------
 void ofApp::draw() {
-	/*if (ofImg.isAllocated()) {
-		ofSetColor(255, 255, 255, 255);
-		ofImg.draw(0, 0);
-	}*/
 	if (ofImg.isAllocated()) {
 		int wid = unrotatedWidth * currentRatio;
 		int hei = unrotatedHeight * currentRatio;
@@ -523,7 +468,7 @@ void ofApp::draw() {
 	}
 	int scaledWidth = unrotatedWidth * currentRatio;
 	int scaledHeight = unrotatedHeight * currentRatio;
-	/*ofFill();
+	ofFill();
 	ofSetColor(50, 50, 50);
 	ofRect(0, 0, ofGetWidth(), imageAnchorY);
 	ofRect(0, 0, imageAnchorX, ofGetHeight());
@@ -534,7 +479,7 @@ void ofApp::draw() {
 	ofRect(0, 0, ofGetWidth(), imageAnchorY);
 	ofRect(0, 0, imageAnchorX, ofGetHeight());
 	ofRect(scaledWidth + imageAnchorX, 0, ofGetWidth() - scaledWidth + imageAnchorX, ofGetHeight());
-	ofRect(0, scaledHeight + imageAnchorY, maxWidth, ofGetHeight() - scaledHeight + imageAnchorY);*/
+	ofRect(0, scaledHeight + imageAnchorY, maxWidth, ofGetHeight() - scaledHeight + imageAnchorY);
 
 	imageScrollView->draw();
 	maskImagesScrollView->draw();
@@ -594,8 +539,6 @@ void ofApp::loadImage(std::string fileName) {
 		ofImg.load("images/" + fileName);
 		ofImg.setImageType(OF_IMAGE_COLOR_ALPHA);
 		imagePixels = ofImg.getPixels();
-		cvImg = cv::Mat_<cv::Vec4b>(imagePixels.getHeight(), imagePixels.getWidth());
-		cvImg.data = ofImg.getPixels().getData();
 
 		currentMode = Mode::Image;
 		unrotatedWidth = ofImg.getWidth();
