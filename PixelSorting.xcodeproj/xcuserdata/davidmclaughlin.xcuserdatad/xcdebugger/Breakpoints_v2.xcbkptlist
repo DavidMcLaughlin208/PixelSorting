@@ -7,31 +7,31 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "CF2C5BEB-D8C8-475C-92C4-0D05C5BBA1F5"
+            uuid = "049201A1-DC62-46A7-A36D-8AE912F24C48"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "src/ofApp.cpp"
+            filePath = "../../../../of_v0.11.2_osx_release/libs/openFrameworks/video/ofAVFoundationPlayer.mm"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "599"
-            endingLineNumber = "599"
-            landmarkName = "ofApp::loadImage(fileName)"
-            landmarkType = "7">
+            startingLineNumber = "343"
+            endingLineNumber = "343"
+            landmarkName = "unknown"
+            landmarkType = "0">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "7B1DC5B5-938D-41C4-B7D4-6C0F122F78F7"
+            uuid = "A1694553-C5A7-4164-87E4-61CC81E9A200"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "src/ofApp.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "586"
-            endingLineNumber = "586"
+            startingLineNumber = "566"
+            endingLineNumber = "566"
             landmarkName = "ofApp::loadImage(fileName)"
             landmarkType = "7">
          </BreakpointContent>
