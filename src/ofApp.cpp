@@ -17,6 +17,9 @@ std::string ofApp::UPPERTHRESHOLDTITLE = "Upper Threshold";
 std::string ofApp::ANGLESLIDERTITLE = "Angle";
 std::string ofApp::THREADCOUNTSLIDERTITLE = "Thread Count";
 std::string ofApp::IDLE = "Idle";
+std::string ofApp::IMAGES_DIRECTORY = "images";
+std::string ofApp::MASKS_DIRECTORY = "images/masks";
+std::string ofApp::DELIM = "/";
 
 string type2str(int type) {
 	string r;
@@ -185,6 +188,9 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 void ofApp::setup() {
 	ofEnableAlphaBlending();
 	ofSetEscapeQuitsApp(false);
+
+	imagesPath = getResourcesRoot() + DELIM + IMAGES_DIRECTORY + DELIM;
+	masksPath = getResourcesRoot() + DELIM + MASKS_DIRECTORY + DELIM;
 
 	brushTypeOptions = { CIRCLE, SQUARE, CLICKANDDRAG };
 	sortingParameterOptions = { BRIGHTNESS, HUE, SATURATION };
@@ -493,7 +499,7 @@ void ofApp::loadMask(std::string fileName) {
 	if (std::find(imageExtensions.begin(), imageExtensions.end(), extension) != imageExtensions.end()) {
 		infoPanel->setActiveStatus("Loading Mask");
 		mask.clear();
-		mask.load("images/masks/" + fileName);
+		mask.load(masksPath + fileName);
 		mask.setImageType(OF_IMAGE_COLOR_ALPHA);
 		currentMaskFilename = fileName;
 
@@ -536,7 +542,7 @@ void ofApp::loadImage(std::string fileName) {
 
 	if (std::find(imageExtensions.begin(), imageExtensions.end(), extension) != imageExtensions.end()) {
 		infoPanel->setActiveStatus("Loading Image");
-		ofImg.load("images/" + fileName);
+		ofImg.load(imagesPath + fileName);
 		ofImg.setImageType(OF_IMAGE_COLOR_ALPHA);
 		imagePixels = ofImg.getPixels();
 
@@ -561,7 +567,7 @@ void ofApp::loadImage(std::string fileName) {
 		if (videoWriter.isOpened()) {
 			videoWriter.release();
 		}
-		bool opened = videoPlayerCv.open("data/images/" + fileName);
+		bool opened = videoPlayerCv.open(imagesPath + fileName);
 		if (!videoPlayerCv.isOpened()) {
 			// Display error message to user
 			infoPanel->setActiveStatus(IDLE);
@@ -646,7 +652,7 @@ void ofApp::start(ofxDatGuiButtonEvent e) {
 		if (currentMode == Mode::Video) {
 			infoPanel->setFrameCounter(videoPlayerCv.get(cv::CAP_PROP_POS_FRAMES), videoPlayerCv.get(cv::CAP_PROP_FRAME_COUNT));
 			float fps = videoPlayerCv.get(cv::CAP_PROP_FPS);
-			videoWriter = cv::VideoWriter("data/images/" + getTimeStampedFileName(currentFileName, ".mp4", ""), cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(unrotatedWidth, unrotatedHeight), true);
+			videoWriter = cv::VideoWriter(imagesPath + getTimeStampedFileName(currentFileName, ".mp4", ""), cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(unrotatedWidth, unrotatedHeight), true);
 		}
 	}
 	else {
@@ -729,7 +735,7 @@ void ofApp::setupDatGui() {
 	maskImagesScrollView->setWidth(guiWidth);
 	maskImagesScrollView->setPosition(ofGetWidth() - guiWidth, datMaskPanel->getHeight() + 10);
 	maskImagesScrollView->onScrollViewEvent(this, &ofApp::clickOnMaskImageButton);
-	maskDirectory.open("images/masks");
+	maskDirectory.open(masksPath);
 	for (int i = 0; i < imageExtensions.size(); i++) {
 		maskDirectory.allowExt(imageExtensions[i]);
 	}
@@ -763,7 +769,7 @@ void ofApp::saveCurrentImage(ofxDatGuiButtonEvent e) {
 		ofImg.resize(imagePixels.getWidth(), imagePixels.getHeight());
 		ofImg.setFromPixels(imagePixels);
 		std::string fullName = getTimeStampedFileName(currentFileName, "", "");
-		ofImg.save("images/" + fullName);
+		ofImg.save(imagesPath + fullName);
 		currentFileName = fullName;
 		imagePixels = copy;
 		ofImg.setFromPixels(imagePixels);
@@ -779,7 +785,7 @@ void ofApp::saveCurentMask(ofxDatGuiButtonEvent e) {
 			saveName = filePath.getBaseName(currentFileName);
 		}
 		std::string fullName = getTimeStampedFileName(saveName, ".png", "Mask");
-		mask.save("images/masks/" + fullName);
+		mask.save(masksPath + fullName);
 	}
 }
 
@@ -1106,6 +1112,14 @@ void ofApp::dragEvent(ofDragInfo dragInfo){
 
 }
 
+
+std::string ofApp::getResourcesRoot() {
+	std::string workingDirectory = std::filesystem::current_path().string();
+#ifdef _WIN64
+	workingDirectory += "/data";
+#endif
+	return workingDirectory;
+}
 
 
 

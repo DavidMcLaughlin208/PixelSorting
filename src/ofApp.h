@@ -77,6 +77,7 @@ public:
 	void saveCurrentImage(ofxDatGuiButtonEvent e);
 	std::string getTimeStampedFileName(std::string filename, std::string suppliedExtension, std::string suffix);
 	std::string datetime();
+	std::string getResourcesRoot();
 
 	void keyPressed(int key);
 	void keyReleased(int key);
@@ -107,6 +108,12 @@ public:
 	static std::string ANGLESLIDERTITLE;
 	static std::string THREADCOUNTSLIDERTITLE;
 	static std::string IDLE;
+	static std::string IMAGES_DIRECTORY;
+	static std::string MASKS_DIRECTORY;
+	static std::string DELIM;
+
+	std::string imagesPath;
+	std::string masksPath;
 
 	ofDirectory imageDirectory;
 	ofDirectory maskDirectory;
