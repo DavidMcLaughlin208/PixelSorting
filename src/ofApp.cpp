@@ -677,6 +677,7 @@ void ofApp::resetGuiPosition() {
 
 void ofApp::setupDatGui() {
 	// Image Panel
+	ofxDatGui::setAssetPath(getResourcesRoot() + DELIM);
 	datImagePanel = new ofxDatGui(ofGetWidth() - guiWidth * 2, 10);
 	datImagePanel->setAssetPath(getResourcesRoot() + DELIM);
 	datImagePanel->setWidth(guiWidth);
