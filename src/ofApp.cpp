@@ -678,6 +678,7 @@ void ofApp::resetGuiPosition() {
 void ofApp::setupDatGui() {
 	// Image Panel
 	datImagePanel = new ofxDatGui(ofGetWidth() - guiWidth * 2, 10);
+	datImagePanel->setAssetPath(getResourcesRoot() + DELIM);
 	datImagePanel->setWidth(guiWidth);
 	datImagePanel->addHeader("Image Sorting Controls");
 	sortButton = datImagePanel->addButton(SORTBUTTONTITLE);
@@ -714,6 +715,7 @@ void ofApp::setupDatGui() {
 
 	// Mask Panel
 	datMaskPanel = new ofxDatGui(ofGetWidth() - guiWidth, 10);
+	datMaskPanel->setAssetPath(getResourcesRoot() + DELIM);
 	datMaskPanel->setWidth(guiWidth);
 	datMaskPanel->addHeader("Mask Controls");
 	ofxDatGuiButton* clearMaskButton = datMaskPanel->addButton("Clear Mask");
