@@ -12,30 +12,31 @@ For more details and a visual explanation check this blog post by satyarth [here
 
 I have made follow-along video for installation instructions [here](https://youtube.com/playlist?list=PLmmjw91hk5iWjPQqv2EueRfAAFfbJiTAz).
 
-* Windows 64-bit OS
-* Latest version of [Microsoft Visual C++ Redistributable 2015-2019](https://docs.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist?view=msvc-170). Choose the x64 version as this application will need to run on 64-bit Windows OS.
+* Windows 64-bit OS or MacOS 10.x / 11.x
+* (Windows Only) Latest version of [Microsoft Visual C++ Redistributable 2015-2019](https://docs.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist?view=msvc-170). Choose the x64 version as this application will need to run on 64-bit Windows OS.
 * At least 2 GB of RAM for sorting images. At least 4 GB RAM for sorting videos (although more may be required for large video files)
-* (Only required if sorting video files) Install [K-Lite Codec pack](https://codecguide.com/download_kl.htm). Click "Download Basic" and then "Server 1" to download the installer. 
-  * Launch the installer 
-    * Select "Normal" installation
-    * Accept defaults for the next few pages of options
-    * It will ask to install adaware which is bloatware. This is not needed. Press decline
-    * Click install
-    * Click "Launch Codec Tweak Tool"
-      * Click the "Fixes" button in the top left
-      * Select "Re-register DirectShow Filters from K-Lite Pack"
-      * Click "Apply & Close"
 
 ### Installation
 
-* Download the SourceCode.zip file in the [Releases](https://github.com/DavidMcLaughlin208/PixelSorting/releases) section.
-* Unzip the folder to a location on your computer.
-* Extract the contents to a folder of your choosing
-* Open the `PixelSorting-v0.1.1` folder
-* Open the `bin` folder
-* Launch `PixelSortium.exe` (Windows will warn you of an Untrusted Publisher. Click "More Info" and then "Run Anyway")
-* All images and videos you want to be able to load into the application will need to be placed in the `data/images` folder (this can be done when the application is open as well)
-* All mask images will need to be placed in the `data/images/masks` folder
+* Windows
+  * Download the SourceCode.zip file in the [Releases](https://github.com/DavidMcLaughlin208/PixelSorting/releases) section for the latest Windows release.
+  * Unzip the folder to a location on your computer.
+  * Extract the contents to a folder of your choosing
+  * Open the `PixelSorting-v0.1.1/bin` folder
+  * Launch `PixelSortium.exe` (Windows will warn you of an Untrusted Publisher. Click "More Info" and then "Run Anyway")
+  * All images and videos you want to be able to load into the application will need to be placed in the `data/images` folder (this can be done when the application is open as well)
+  * All mask images will need to be placed in the `data/images/masks` folder
+* Mac
+  * Download the SourceCode.zip file in the [Releases](https://github.com/DavidMcLaughlin208/PixelSorting/releases) section for the version of MacOS you have
+  * Unzip the folder in the Downloads section
+  * Open the `PixelSorting-v0.1.2/bin` folder
+  * Move PixelSorting.app to the `Applications` folder
+  * To launch Right-click `PixelSorting.app` and click 'Open' (This is important as it adds an exception to run an unsigned application). From now on you can double click to launch.
+  * Right-click `PixelSorting.app` and click 'Show Package Contents'
+  * Navigate to `Resources/Contents/images`
+  * All images that you want to be loaded by the app must be placed in this folder (this can be done when the application is open as well)
+  * All mask files must be places in `images/masks`
+
 
 ### Error on start up
 
@@ -44,6 +45,13 @@ If you encounter the following error when launching the app:
 `The code execution could not proceed because (LIBRARYNAME).dll was not found. Reinstalling the program may fix the problem.`
 
 This is caused due to not having the latest version of [Microsoft Visual C++ Redistributable 2015-2019](https://docs.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist?view=msvc-170) installed
+
+
+---
+
+If you try to load the app on Mac and you get the error "The application could not be opened".
+
+This is because the application is not signed and you must add an exception by right-clicking `PixelSorting.app` and clicking 'Open'
 
 
 ### Usage
@@ -136,10 +144,8 @@ The supported files types are based on the underlying libraries used by OpenFram
 Images (from [FreeImage](https://freeimage.sourceforge.io/features.html) library):
 png, jpg, jpeg, jp2, bmp, tif, tga, pcx, ico
 
-Videos (from [K-Lite](https://codecguide.com/download_kl.htm) codec pack):
-AVI, MKV, MP4, FLV, MPEG, MOV, TS, M2TS, WMV, RM, RMVB, OGM, WebM
-
-I have verified all the listed image types are supported but have only verified MP4 and MKV video file types personally.
+Videos (from OpenCV):
+AVI, MKV, MP4, + more (Hard to get an actual list since it can vary by platform + codecs available, but most common video file types are supported)
 
 ### Mask Details
 
@@ -173,5 +179,3 @@ This will reduce the file size but not back down to the same as the input file.
 
 As of now the sorting will start from the first frame and continue until the last frame is sorted or the sorting is ended early. 
 If you want to only sort a section of your video, right now I would recommend using video editing software to make a new file of just the section you want sorted and import that into Pixel Sortium.
-
-If you encounter any issues with mask data being offset from where it appears on the screen then restart the application and it should be resolved. It is a known issue I am looking into.

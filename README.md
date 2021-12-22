@@ -4,7 +4,7 @@
 
 In short, pixel sorting is a generative art technique developed by [Kim Asendorf](https://github.com/kimasendorf/ASDFPixelSort). It is done by taking an interval of pixels in a row or column from an image and rearranging or sorting them based on some criteria.
 
-The intervals can be determined arbitrarily, such as seleccting all consecutive pixels under a certain brightness threshold, and then sorting them by some property such as brightness values.
+The intervals can be determined arbitrarily, such as selecting all consecutive pixels under a certain brightness threshold, and then sorting them by some property such as brightness values.
 
 For more details and a visual explanation check this blog post by satyarth [here](http://satyarth.me/articles/pixel-sorting/).
 
@@ -23,10 +23,14 @@ This c++ multithreaded application can perform the same sort on the same image i
 
 I also wanted to create an application with a gui to give more immediate visual feedback to the user and add other tools such as mask drawing in app.
 
+### Supported Platforms
+
+Pixel Sortium has released builds for Windows-64 Bit OS and MacOS. I will be looking into a Linux build as well.
+
 ### Dependencies
 
-This application uses [OpenFrameworks](https://openframeworks.cc/) and c++ for the pixel sorting, image loading, and video loading/playback.
-[OpenCV](https://opencv.org/) is used to take the modified pixels from each frame and collect them into an .mp4 file. UI is made using [ofxDatGui](https://github.com/braitsch/ofxDatGui).
+This application uses [OpenFrameworks](https://openframeworks.cc/) and c++ for the pixel sorting and image loading.
+[OpenCV](https://opencv.org/) is used to load videos, take the modified pixels from each frame, and collect them into an .mp4 file. UI is made using [ofxDatGui](https://github.com/braitsch/ofxDatGui).
 
 ### Installation and Usage
 
@@ -37,15 +41,12 @@ Also, I have made videos you can follow along with for installation and a featur
 ### Supported file types
 
 The supported files types are based on the underlying libraries used by OpenFrameworks and OpenCV.
-(NOTE: If you want to load and sort video files then you need to install the [K-Lite codec pack (basic)](https://codecguide.com/download_kl.htm))
 
 Images (from [FreeImage](https://freeimage.sourceforge.io/features.html) library):
 png, jpg, jpeg, jp2, bmp, tif, tga, pcx, ico
 
-Videos (from [K-Lite](https://codecguide.com/download_kl.htm) codec pack):
-AVI, MKV, MP4, FLV, MPEG, MOV, TS, M2TS, WMV, RM, RMVB, OGM, WebM
-
-I have verified all the listed image types are supported but have only verified MP4 and MKV video file types personally.
+Videos (from OpenCV):
+AVI, MKV, MP4, + more (Hard to get an actual list since it can vary by platform + codecs available, but most common video file types are supported)
 
 ### Feature Enhancement Ideas
 
@@ -67,7 +68,6 @@ I have verified all the listed image types are supported but have only verified 
   * Break up video sorting to multiple files and concatenate them all at the end so in the case of any issues not all progress is lost
   * Add ability to apply curves or easing functions to parameter values to change them over the course of a video sorting
 * Look into Linux support
-* Fix video loading issues with Mac version
 * Refine sorting algorithm to improve performance
 * Lots of refactoring to make the code less tightly coupled and more modular
 
