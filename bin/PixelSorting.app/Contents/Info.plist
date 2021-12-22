@@ -41,7 +41,7 @@
 	<key>DTXcodeBuild</key>
 	<string>12D4e</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>10.15</string>
+	<string>10.9</string>
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs to access the camera</string>
 	<key>NSHighResolutionCapable</key>
