@@ -318,18 +318,16 @@ void ofApp::update() {
 				else {
 					videoPlayerCv >> cvImg;
 					cvtColor(cvImg, cvImg, cv::COLOR_BGR2RGBA);
+					
 					psImage->ofImg.clear();
 					psImage->ofImg.resize(cvImg.cols, cvImg.rows);
 					psImage->ofImg.setFromPixels(cvImg.data, cvImg.cols, cvImg.rows, OF_IMAGE_COLOR_ALPHA);
 					psImage->imagePixels = psImage->ofImg.getPixels();
 					psImage->currentImageAngle = 0;
-					if (psImage->currentImageAngle != angle) {
-						infoPanel->setActiveStatus("Rotating Image");
-						psImage->rotateImage(angle);
-						infoPanel->setActiveStatus("Sorting");
-						psImage->paddingAddedToImage = true;
-						psImage->currentImageAngle = angle;
-					}
+					psImage->paddingAddedToImage = false;
+					
+					psImage->rotateImage(angle);
+					
 					timeStart = std::chrono::high_resolution_clock::now();
 					infoPanel->setFrameCounter(videoPlayerCv.get(cv::CAP_PROP_POS_FRAMES), videoPlayerCv.get(cv::CAP_PROP_FRAME_COUNT));
 				}
@@ -347,53 +345,6 @@ void ofApp::update() {
 	datImagePanel->update();
 	datMaskPanel->update();
 }
-
-// Code adapted to work with OF pulled from here: https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c/33564950#33564950
-//void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
-//	if (angle == 0) {
-//		return;
-//	}
-//	std::chrono::steady_clock::time_point rotateStart = std::chrono::high_resolution_clock::now();
-//	int size = psImage->ofImg.getWidth() * psImage->ofImg.getHeight();
-//	int bpp = imagePixels.getBytesPerPixel();
-//	cv::Mat src;
-//	src = cv::Mat_<cv::Vec4b>(ofImg.getHeight(), ofImg.getWidth());
-//	src.data = imagePixels.getData();
-//	cvtColor(src, src, cv::COLOR_RGBA2BGRA);
-//	
-//	// get rotation matrix for rotating the image around its center in pixel coordinates
-//	cv::Point2f center((src.cols - 1) / 2.0, (src.rows - 1) / 2.0);
-//	cv::Mat rot = cv::getRotationMatrix2D(center, angle, 1.0);
-//	// determine bounding rectangle, center not relevant
-//	// We calculate the largest bounding box necessary for the image to fit at any angle so if multiple rotations
-//	// occur on the same image we only have to add padding once
-//	cv::Size boxSize;
-//	if (paddingAddedToImage) {
-//		boxSize = src.size();
-//	}
-//	else {
-//		int diagonal = (int)sqrt(src.cols * src.cols + src.rows * src.rows);
-//		boxSize = cv::Size(diagonal, diagonal);
-//		this->xPadding = (boxSize.width - src.size().width) / 2;
-//		this->yPadding = (boxSize.height - src.size().height) / 2;
-//	}
-//	// adjust transformation matrix
-//	rot.at<double>(0, 2) += boxSize.width / 2.0 - src.cols / 2.0;
-//	rot.at<double>(1, 2) += boxSize.height / 2.0 - src.rows / 2.0;
-//
-//	cv::Mat dst;
-//	// WarpAffine is a very useful function but will cause the resulting image to be slightly blurry if not rotated at right angles
-//	cv::warpAffine(src, dst, rot, boxSize, cv::INTER_CUBIC);
-//
-//	cvtColor(dst, dst, cv::COLOR_BGRA2RGBA);
-//	ofImg.resize(dst.cols, dst.rows);
-//	ofImg.setFromPixels(dst.data, dst.cols, dst.rows, OF_IMAGE_COLOR_ALPHA);
-//	imagePixels = ofImg.getPixels();
-//	
-//	std::chrono::steady_clock::time_point rotateEnd = std::chrono::high_resolution_clock::now();
-//	long timeTaken = std::chrono::duration_cast<std::chrono::milliseconds>(rotateEnd - rotateStart).count();
-//	std::cout << "Rotating image took " << timeTaken << " milliseconds for rotation diff of " << angle << " degrees." << std::endl;
-//}
 
 void ofApp::saveFrameToVideo() {
 	infoPanel->setActiveStatus("Saving Frame To Video");
@@ -586,6 +537,7 @@ void ofApp::loadImage(std::string fileName) {
 	ofClear(255, 255, 255, 0);
 	imageFbo.end();
 
+	// TODO: Consolidate these functions
 	psImage->calculateCurrentRatio(maxWidth, maxHeight);
 	psImage->calculateImageAnchorPoints(maxWidth, maxHeight, guiHeight);
 
@@ -925,24 +877,6 @@ void ofApp::drawArrows() {
 	ofPopMatrix();
 	arrowsFbo.end();
 }
-
-//void ofApp::calculateCurrentRatio(int width, int height) {
-//	if (width > maxWidth || height > maxHeight) {
-//		float xRatio = (float)maxWidth / (float)width;
-//		float yRatio = (float)maxHeight / (float)height;
-//		currentRatio = xRatio < yRatio ? xRatio : yRatio;
-//	}
-//	else {
-//		currentRatio = 1.0f;
-//	}
-//}
-//
-//void ofApp::calculateImageAnchorPoints(int unrotatedWidth, int unrotatedHeight, int maxWidth, int maxHeight, float ratio) {
-//	int scaledWidth = unrotatedWidth * ratio;
-//	int scaledHeight = unrotatedHeight * ratio;
-//	imageAnchorX = max(0, (maxWidth - scaledWidth) / 2);
-//	imageAnchorY = max(0, (maxHeight - scaledHeight) / 2 + guiHeight);
-//}
 
 void ofApp::invertMask(ofxDatGuiButtonEvent e) {
 	if (mask.isAllocated()) {

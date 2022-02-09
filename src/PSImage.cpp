@@ -56,6 +56,7 @@ void PSImage::calculateImageAnchorPoints(int maxWidth, int maxHeight, int guiHei
 	this->imageAnchorY = max(0, (maxHeight - scaledHeight) / 2 + guiHeight);
 }
 
+// Code adapted to work with OF pulled from here : https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c/33564950#33564950
 void PSImage::rotateImage(int angle) {
 	int angleDiff = angle - currentImageAngle;
 	if (currentImageAngle == angle) {
