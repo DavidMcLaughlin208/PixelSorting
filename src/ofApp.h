@@ -4,6 +4,7 @@
 #include "ofxOpenCv.h"
 #include "ofxDatGui.h"
 #include "InfoPanel.h"
+#include "PSImage.h"
 #include "../resource.h"
 #include <vector>
 #include <string>
@@ -120,12 +121,15 @@ public:
 	int directoryRefreshCounter = 0;
 	size_t imageDirCount = 0;
 	size_t maskDirCount = 0;
-	int unrotatedWidth;
+
+	PSImage* psImage;
+
+	/*int unrotatedWidth;
 	int unrotatedHeight;
 	int xPadding;
 	int yPadding;
 	int imageAnchorX = 0;
-	int imageAnchorY = 0;
+	int imageAnchorY = 0;*/
 
 	ofImage mask;
 	bool useMask = false;
@@ -133,7 +137,7 @@ public:
 	int maskOpacity = 110;
 	int maskThreshold = 255;
 
-	ofPixels imagePixels;
+	//ofPixels imagePixels;
 	ofPixels maskPixels;
 
 	ofFbo imageFbo;
@@ -153,9 +157,9 @@ public:
 	float threshold = 0.25f;
 	float upperThreshold = 0.8f;
 	int angle = 0;
-	int currentImageAngle = 0;
+	//int currentImageAngle = 0;
 	bool sortComplete = false;
-	bool paddingAddedToImage = false;
+	//bool paddingAddedToImage = false;
 
 	int threadCount = 30;
 	int pixelTransferThreadCount = 14;
@@ -164,7 +168,7 @@ public:
 	// https://docs.opencv.org/3.4/d4/d15/group__videoio__flags__base.html#gaeb8dd9c89c10a5c63c139bf7c4f5704d
 	cv::VideoCapture videoPlayerCv;
 	cv::Mat cvImg;
-	ofImage ofImg;
+	//ofImage ofImg;
 
 	std::chrono::steady_clock::time_point timeStart = std::chrono::high_resolution_clock::now();
 	std::chrono::steady_clock::time_point timeEnd = std::chrono::high_resolution_clock::now();
@@ -174,7 +178,7 @@ public:
 
 	int maxWidth = 1280;
 	int maxHeight = 800;
-	float currentRatio = 1.0f;
+	//float currentRatio = 1.0f;
 
 	bool mouseDown = false;
 	int buttonDown = 0;

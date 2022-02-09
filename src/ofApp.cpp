@@ -192,6 +192,9 @@ void ofApp::setup() {
 	imagesPath = getResourcesRoot() + DELIM + IMAGES_DIRECTORY + DELIM;
 	masksPath = getResourcesRoot() + DELIM + MASKS_DIRECTORY + DELIM;
 
+	psImage = new PSImage();
+	psImage->init(imagesPath);
+
 	brushTypeOptions = { CIRCLE, SQUARE, CLICKANDDRAG };
 	sortingParameterOptions = { BRIGHTNESS, HUE, SATURATION };
 	
@@ -267,10 +270,10 @@ void ofApp::update() {
 		infoPanel->setActiveStatus("Sorting");
 		vector<std::thread> threadList;
 		for (int i = 0; i < threadCount; i++) {
-			threadList.push_back(std::thread(pixelSortRow, sortingIndex, ofImg.getWidth(), ofImg.getHeight(), std::ref(imagePixels), std::ref(maskPixels), currentlySelectedSortParameter, threshold, upperThreshold, useMask, maskThreshold, currentImageAngle, xPadding, yPadding));
+			threadList.push_back(std::thread(pixelSortRow, sortingIndex, psImage->ofImg.getWidth(), psImage->ofImg.getHeight(), std::ref(psImage->imagePixels), std::ref(maskPixels), currentlySelectedSortParameter, threshold, upperThreshold, useMask, maskThreshold, psImage->currentImageAngle, psImage->xPadding, psImage->yPadding));
 			sortingIndex += 1;
 
-			if (sortingIndex >= ofImg.getHeight() - 1) {
+			if (sortingIndex >= psImage->ofImg.getHeight() - 1) {
 				sortingIndex = 0;
 				sortComplete = true;
 				
@@ -280,7 +283,7 @@ void ofApp::update() {
 		for (int i = 0; i < threadList.size(); i++) {
 			threadList[i].join();
 		}
-		ofImg.setFromPixels(imagePixels);
+		psImage->ofImg.setFromPixels(psImage->imagePixels);
 		if (sortComplete) {
 			infoPanel->setProgress(1);
 			timeEnd = std::chrono::high_resolution_clock::now();
@@ -290,7 +293,7 @@ void ofApp::update() {
 			infoPanel->sortTimeTaken(timeTaken);
 		}
 		else {
-			infoPanel->setProgress((float)sortingIndex / (float)ofImg.getHeight());
+			infoPanel->setProgress((float)sortingIndex / (float)psImage->ofImg.getHeight());
 		}
 
 		if (sortComplete) {
@@ -298,7 +301,7 @@ void ofApp::update() {
 			if (currentMode == Mode::Image) {
 				started = false;
 				sortButton->setLabel(SORTBUTTONTITLE);
-				ofImg.setFromPixels(imagePixels);
+				psImage->ofImg.setFromPixels(psImage->imagePixels);
 				//currentImageAngle = 0;
 				infoPanel->setActiveStatus(IDLE);
 			}
@@ -315,17 +318,17 @@ void ofApp::update() {
 				else {
 					videoPlayerCv >> cvImg;
 					cvtColor(cvImg, cvImg, cv::COLOR_BGR2RGBA);
-					ofImg.clear();
-					ofImg.resize(cvImg.cols, cvImg.rows);
-					ofImg.setFromPixels(cvImg.data, cvImg.cols, cvImg.rows, OF_IMAGE_COLOR_ALPHA);
-					imagePixels = ofImg.getPixels();
-					currentImageAngle = 0;
-					if (currentImageAngle != angle) {
+					psImage->ofImg.clear();
+					psImage->ofImg.resize(cvImg.cols, cvImg.rows);
+					psImage->ofImg.setFromPixels(cvImg.data, cvImg.cols, cvImg.rows, OF_IMAGE_COLOR_ALPHA);
+					psImage->imagePixels = psImage->ofImg.getPixels();
+					psImage->currentImageAngle = 0;
+					if (psImage->currentImageAngle != angle) {
 						infoPanel->setActiveStatus("Rotating Image");
-						rotateImage(angle, false);
+						psImage->rotateImage(angle);
 						infoPanel->setActiveStatus("Sorting");
-						paddingAddedToImage = true;
-						currentImageAngle = angle;
+						psImage->paddingAddedToImage = true;
+						psImage->currentImageAngle = angle;
 					}
 					timeStart = std::chrono::high_resolution_clock::now();
 					infoPanel->setFrameCounter(videoPlayerCv.get(cv::CAP_PROP_POS_FRAMES), videoPlayerCv.get(cv::CAP_PROP_FRAME_COUNT));
@@ -346,66 +349,66 @@ void ofApp::update() {
 }
 
 // Code adapted to work with OF pulled from here: https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c/33564950#33564950
-void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
-	if (angle == 0) {
-		return;
-	}
-	std::chrono::steady_clock::time_point rotateStart = std::chrono::high_resolution_clock::now();
-	int size = ofImg.getWidth() * ofImg.getHeight();
-	int bpp = imagePixels.getBytesPerPixel();
-	cv::Mat src;
-	src = cv::Mat_<cv::Vec4b>(ofImg.getHeight(), ofImg.getWidth());
-	src.data = imagePixels.getData();
-	cvtColor(src, src, cv::COLOR_RGBA2BGRA);
-	
-	// get rotation matrix for rotating the image around its center in pixel coordinates
-	cv::Point2f center((src.cols - 1) / 2.0, (src.rows - 1) / 2.0);
-	cv::Mat rot = cv::getRotationMatrix2D(center, angle, 1.0);
-	// determine bounding rectangle, center not relevant
-	// We calculate the largest bounding box necessary for the image to fit at any angle so if multiple rotations
-	// occur on the same image we only have to add padding once
-	cv::Size boxSize;
-	if (paddingAddedToImage) {
-		boxSize = src.size();
-	}
-	else {
-		int diagonal = (int)sqrt(src.cols * src.cols + src.rows * src.rows);
-		boxSize = cv::Size(diagonal, diagonal);
-		this->xPadding = (boxSize.width - src.size().width) / 2;
-		this->yPadding = (boxSize.height - src.size().height) / 2;
-	}
-	// adjust transformation matrix
-	rot.at<double>(0, 2) += boxSize.width / 2.0 - src.cols / 2.0;
-	rot.at<double>(1, 2) += boxSize.height / 2.0 - src.rows / 2.0;
-
-	cv::Mat dst;
-	// WarpAffine is a very useful function but will cause the resulting image to be slightly blurry if not rotated at right angles
-	cv::warpAffine(src, dst, rot, boxSize, cv::INTER_CUBIC);
-
-	cvtColor(dst, dst, cv::COLOR_BGRA2RGBA);
-	ofImg.resize(dst.cols, dst.rows);
-	ofImg.setFromPixels(dst.data, dst.cols, dst.rows, OF_IMAGE_COLOR_ALPHA);
-	imagePixels = ofImg.getPixels();
-	
-	std::chrono::steady_clock::time_point rotateEnd = std::chrono::high_resolution_clock::now();
-	long timeTaken = std::chrono::duration_cast<std::chrono::milliseconds>(rotateEnd - rotateStart).count();
-	std::cout << "Rotating image took " << timeTaken << " milliseconds for rotation diff of " << angle << " degrees." << std::endl;
-}
+//void ofApp::rotateImage(int angle, bool paddingAddedToImage) {
+//	if (angle == 0) {
+//		return;
+//	}
+//	std::chrono::steady_clock::time_point rotateStart = std::chrono::high_resolution_clock::now();
+//	int size = psImage->ofImg.getWidth() * psImage->ofImg.getHeight();
+//	int bpp = imagePixels.getBytesPerPixel();
+//	cv::Mat src;
+//	src = cv::Mat_<cv::Vec4b>(ofImg.getHeight(), ofImg.getWidth());
+//	src.data = imagePixels.getData();
+//	cvtColor(src, src, cv::COLOR_RGBA2BGRA);
+//	
+//	// get rotation matrix for rotating the image around its center in pixel coordinates
+//	cv::Point2f center((src.cols - 1) / 2.0, (src.rows - 1) / 2.0);
+//	cv::Mat rot = cv::getRotationMatrix2D(center, angle, 1.0);
+//	// determine bounding rectangle, center not relevant
+//	// We calculate the largest bounding box necessary for the image to fit at any angle so if multiple rotations
+//	// occur on the same image we only have to add padding once
+//	cv::Size boxSize;
+//	if (paddingAddedToImage) {
+//		boxSize = src.size();
+//	}
+//	else {
+//		int diagonal = (int)sqrt(src.cols * src.cols + src.rows * src.rows);
+//		boxSize = cv::Size(diagonal, diagonal);
+//		this->xPadding = (boxSize.width - src.size().width) / 2;
+//		this->yPadding = (boxSize.height - src.size().height) / 2;
+//	}
+//	// adjust transformation matrix
+//	rot.at<double>(0, 2) += boxSize.width / 2.0 - src.cols / 2.0;
+//	rot.at<double>(1, 2) += boxSize.height / 2.0 - src.rows / 2.0;
+//
+//	cv::Mat dst;
+//	// WarpAffine is a very useful function but will cause the resulting image to be slightly blurry if not rotated at right angles
+//	cv::warpAffine(src, dst, rot, boxSize, cv::INTER_CUBIC);
+//
+//	cvtColor(dst, dst, cv::COLOR_BGRA2RGBA);
+//	ofImg.resize(dst.cols, dst.rows);
+//	ofImg.setFromPixels(dst.data, dst.cols, dst.rows, OF_IMAGE_COLOR_ALPHA);
+//	imagePixels = ofImg.getPixels();
+//	
+//	std::chrono::steady_clock::time_point rotateEnd = std::chrono::high_resolution_clock::now();
+//	long timeTaken = std::chrono::duration_cast<std::chrono::milliseconds>(rotateEnd - rotateStart).count();
+//	std::cout << "Rotating image took " << timeTaken << " milliseconds for rotation diff of " << angle << " degrees." << std::endl;
+//}
 
 void ofApp::saveFrameToVideo() {
 	infoPanel->setActiveStatus("Saving Frame To Video");
-	if (currentImageAngle != 0) {
-		rotateImage(-currentImageAngle, true);
-		int originalImageX = ofImg.getWidth() / 2 - unrotatedWidth / 2;
-		int originalImageY = ofImg.getHeight() / 2 - unrotatedHeight / 2;
-		imagePixels.crop(originalImageX, originalImageY, unrotatedWidth, unrotatedHeight);
-		ofImg.resize(imagePixels.getWidth(), imagePixels.getHeight());
-		ofImg.setFromPixels(imagePixels);
+	if (psImage->currentImageAngle != 0) {
+		psImage->rotateImage(0);
+		int originalImageX = psImage->ofImg.getWidth() / 2 - psImage->unrotatedWidth / 2;
+		int originalImageY = psImage->ofImg.getHeight() / 2 - psImage->unrotatedHeight / 2;
+		psImage->imagePixels.crop(originalImageX, originalImageY, psImage->unrotatedWidth, psImage->unrotatedHeight);
+		psImage->ofImg.resize(psImage->imagePixels.getWidth(), psImage->imagePixels.getHeight());
+		psImage->ofImg.setFromPixels(psImage->imagePixels);
 	}
 
 
-	cv::Mat temp = cv::Mat_<cv::Vec4b>(imagePixels.getHeight(), imagePixels.getWidth());
-	temp.data = imagePixels.getData();
+	cv::Mat temp = cv::Mat_<cv::Vec4b>(psImage->imagePixels.getHeight(), psImage->imagePixels.getWidth());
+	temp.data = psImage->imagePixels.getData();
 	cvtColor(temp, temp, cv::COLOR_RGBA2BGR);
 	videoWriter.write(temp);
 	cvtColor(temp, temp, cv::COLOR_BGR2RGBA);
@@ -413,30 +416,30 @@ void ofApp::saveFrameToVideo() {
 
 //--------------------------------------------------------------
 void ofApp::draw() {
-	if (ofImg.isAllocated()) {
-		int wid = unrotatedWidth * currentRatio;
-		int hei = unrotatedHeight * currentRatio;
+	if (psImage->ofImg.isAllocated()) {
+		int wid = psImage->unrotatedWidth * psImage->currentRatio;
+		int hei = psImage->unrotatedHeight * psImage->currentRatio;
 		// Since the image may be rotated and have a black buffer area we rotate it and draw it to an FBO
 		// which is the exact size of the original image. This allows us to essentially extract only the pixels
 		// of the bordered, rotated image that we are interested in, and then can display it anywhere and any size we want
 		imageFbo.begin();
 		ofSetColor(255, 255, 255, 255);
 		ofPushMatrix();
-		ofTranslate(unrotatedWidth / 2, unrotatedHeight / 2 );
-		ofRotate(currentImageAngle, 0, 0, 1);
-		ofTranslate(-ofImg.getWidth() / 2, -ofImg.getHeight() / 2);
+		ofTranslate(psImage->unrotatedWidth / 2, psImage->unrotatedHeight / 2 );
+		ofRotate(psImage->currentImageAngle, 0, 0, 1);
+		ofTranslate(-psImage->ofImg.getWidth() / 2, -psImage->ofImg.getHeight() / 2);
 		ofPushMatrix();
-		ofImg.draw(0,0);
+		psImage->ofImg.draw(0,0);
 		ofPopMatrix();
 		ofPopMatrix();
 		imageFbo.end();
 
 		ofSetColor(255, 255, 255, 255);
-		imageFbo.draw(imageAnchorX, imageAnchorY, wid, hei);
+		imageFbo.draw(psImage->imageAnchorX, psImage->imageAnchorY, wid, hei);
 
 		if (arrowDrawCounter > 0) {
 			ofPushMatrix();
-			ofTranslate(wid / 2 + imageAnchorX, hei / 2 + imageAnchorY);
+			ofTranslate(wid / 2 + psImage->imageAnchorX, hei / 2 + psImage->imageAnchorY);
 			ofRotate(angle);
 			int alpha = (int)min(255.0f, (float)arrowDrawCounter / (float)arrowDrawCounterStartFade * 255);
 			ofSetColor(200, 200, 200, alpha);
@@ -450,7 +453,7 @@ void ofApp::draw() {
 	if (mask.isAllocated()) {
 		ofPushMatrix();
 		ofSetColor(255, 255, 255, maskOpacity);
-		mask.draw(imageAnchorX, imageAnchorY, 0, mask.getWidth() * currentRatio, mask.getHeight() * currentRatio);
+		mask.draw(psImage->imageAnchorX, psImage->imageAnchorY, 0, mask.getWidth() * psImage->currentRatio, mask.getHeight() * psImage->currentRatio);
 		ofPopMatrix();
 	}
 	if (currentMouseMode == MouseMode::MaskDraw && withinUnrotatedImageBounds(mouseX, mouseY)) {
@@ -472,20 +475,20 @@ void ofApp::draw() {
 			break;
 		}
 	}
-	int scaledWidth = unrotatedWidth * currentRatio;
-	int scaledHeight = unrotatedHeight * currentRatio;
+	int scaledWidth = psImage->scaledWidth;
+	int scaledHeight = psImage->scaledHeight;
 	ofFill();
 	ofSetColor(50, 50, 50);
-	ofRect(0, 0, ofGetWidth(), imageAnchorY);
-	ofRect(0, 0, imageAnchorX, ofGetHeight());
-	ofRect(scaledWidth + imageAnchorX, 0, ofGetWidth() - scaledWidth + imageAnchorX, ofGetHeight());
-	ofRect(0, scaledHeight + imageAnchorY, maxWidth, ofGetHeight() - scaledHeight + imageAnchorY);
+	ofRect(0, 0, ofGetWidth(), psImage->imageAnchorY);
+	ofRect(0, 0, psImage->imageAnchorX, ofGetHeight());
+	ofRect(scaledWidth + psImage->imageAnchorX, 0, ofGetWidth() - scaledWidth + psImage->imageAnchorX, ofGetHeight());
+	ofRect(0, scaledHeight + psImage->imageAnchorY, maxWidth, ofGetHeight() - scaledHeight + psImage->imageAnchorY);
 	ofNoFill();
 	ofSetColor(70, 70, 70);
-	ofRect(0, 0, ofGetWidth(), imageAnchorY);
-	ofRect(0, 0, imageAnchorX, ofGetHeight());
-	ofRect(scaledWidth + imageAnchorX, 0, ofGetWidth() - scaledWidth + imageAnchorX, ofGetHeight());
-	ofRect(0, scaledHeight + imageAnchorY, maxWidth, ofGetHeight() - scaledHeight + imageAnchorY);
+	ofRect(0, 0, ofGetWidth(), psImage->imageAnchorY);
+	ofRect(0, 0, psImage->imageAnchorX, ofGetHeight());
+	ofRect(scaledWidth + psImage->imageAnchorX, 0, ofGetWidth() - scaledWidth + psImage->imageAnchorX, ofGetHeight());
+	ofRect(0, scaledHeight + psImage->imageAnchorY, maxWidth, ofGetHeight() - scaledHeight + psImage->imageAnchorY);
 
 	imageScrollView->draw();
 	maskImagesScrollView->draw();
@@ -514,11 +517,11 @@ void ofApp::loadMask(std::string fileName) {
 		mask.setFromPixels(maskPixels);
 		maskPixels = mask.getPixels();
 
-		if (mask.getWidth() < unrotatedWidth || mask.getHeight() < unrotatedHeight) {
+		if (mask.getWidth() < psImage->unrotatedWidth || mask.getHeight() < psImage->unrotatedHeight) {
 			ofPixels copy;
 			copy.allocate(maskPixels.getWidth(), maskPixels.getHeight(), OF_IMAGE_COLOR_ALPHA);
 			maskPixels.pasteInto(copy, 0, 0);
-			mask.allocate(max((int)mask.getWidth(), unrotatedWidth), max((int)mask.getHeight(), unrotatedHeight), OF_IMAGE_COLOR_ALPHA);
+			mask.allocate(max((int)mask.getWidth(), psImage->unrotatedWidth), max((int)mask.getHeight(), psImage->unrotatedHeight), OF_IMAGE_COLOR_ALPHA);
 			mask.setColor(ofColor(0, 0, 0, 0));
 			maskPixels = mask.getPixels();
 			copy.pasteInto(maskPixels, 0, 0);
@@ -534,7 +537,7 @@ void ofApp::loadMask(std::string fileName) {
 void ofApp::loadImage(std::string fileName) {
 	videoPlayerCv.release();
 	videoWriter.release();
-	ofImg.clear();
+	psImage->ofImg.clear();
 	ofFilePath filePath;
 	std::string extension = filePath.getFileExt(fileName);
 	std::transform(extension.begin(), extension.end(), extension.begin(),
@@ -542,20 +545,9 @@ void ofApp::loadImage(std::string fileName) {
 
 	if (std::find(imageExtensions.begin(), imageExtensions.end(), extension) != imageExtensions.end()) {
 		infoPanel->setActiveStatus("Loading Image");
-		ofImg.load(imagesPath + fileName);
-		ofImg.setImageType(OF_IMAGE_COLOR_ALPHA);
-		imagePixels = ofImg.getPixels();
+		psImage->load(fileName);
 
 		currentMode = Mode::Image;
-		unrotatedWidth = ofImg.getWidth();
-		unrotatedHeight = ofImg.getHeight();
-		imagePixels = ofImg.getPixels();
-		paddingAddedToImage = false;
-		currentImageAngle = 0;
-		imageAnchorX = 0;
-		imageAnchorY = 0;
-		xPadding = 0;
-		yPadding = 0;
 		infoPanel->setFrameCounter(0, 0);
 	}
 	else if (std::find(videoExtensions.begin(), videoExtensions.end(), extension) != videoExtensions.end()) {
@@ -577,17 +569,7 @@ void ofApp::loadImage(std::string fileName) {
 		videoPlayerCv >> cvImg;
 		std::string type = type2str(cvImg.type());
 		cv::cvtColor(cvImg, cvImg, cv::COLOR_BGR2RGBA);
-		ofImg.setFromPixels(cvImg.data,cvImg.cols, cvImg.rows, OF_IMAGE_COLOR_ALPHA);
-		imagePixels = ofImg.getPixels();
-
-		unrotatedWidth = cvImg.cols;
-		unrotatedHeight = cvImg.rows;
-		paddingAddedToImage = false;
-		currentImageAngle = 0;
-		imageAnchorX = 0;
-		imageAnchorY = 0;
-		xPadding = 0;
-		yPadding = 0;
+		psImage->setFromMat(cvImg);
 		
 		currentMode = Mode::Video;
 		infoPanel->setFrameCounter(0, videoPlayerCv.get(cv::CAP_PROP_FRAME_COUNT));
@@ -599,20 +581,20 @@ void ofApp::loadImage(std::string fileName) {
 	}
 
 	imageFbo.clear();
-	imageFbo.allocate(unrotatedWidth, unrotatedHeight);
+	imageFbo.allocate(psImage->unrotatedWidth, psImage->unrotatedHeight);
 	imageFbo.begin();
 	ofClear(255, 255, 255, 0);
 	imageFbo.end();
 
-	calculateCurrentRatio(unrotatedWidth, unrotatedHeight);
-	calculateImageAnchorPoints(unrotatedWidth, unrotatedHeight, maxWidth, maxHeight, currentRatio);
+	psImage->calculateCurrentRatio(maxWidth, maxHeight);
+	psImage->calculateImageAnchorPoints(maxWidth, maxHeight, guiHeight);
 
 	if (mask.isAllocated()) {
-		if (mask.getWidth() < unrotatedWidth || mask.getHeight() < unrotatedHeight) {
+		if (mask.getWidth() < psImage->unrotatedWidth || mask.getHeight() < psImage->unrotatedHeight) {
 			ofPixels copy;
 			copy.allocate(maskPixels.getWidth(), maskPixels.getHeight(), OF_IMAGE_COLOR_ALPHA);
 			maskPixels.pasteInto(copy, 0, 0);
-			mask.allocate(max((int)mask.getWidth(), unrotatedWidth), max((int)mask.getHeight(), unrotatedHeight), OF_IMAGE_COLOR_ALPHA);
+			mask.allocate(max((int)mask.getWidth(), psImage->unrotatedWidth), max((int)mask.getHeight(), psImage->unrotatedHeight), OF_IMAGE_COLOR_ALPHA);
 			mask.setColor(ofColor(0, 0, 0, 0));
 			maskPixels = mask.getPixels();
 			copy.pasteInto(maskPixels, 0, 0);
@@ -621,7 +603,7 @@ void ofApp::loadImage(std::string fileName) {
 		}
 	}
 	else {
-		mask.allocate(unrotatedWidth, unrotatedHeight, OF_IMAGE_COLOR_ALPHA);
+		mask.allocate(psImage->unrotatedWidth, psImage->unrotatedHeight, OF_IMAGE_COLOR_ALPHA);
 		mask.setColor(ofColor(0, 0, 0, 0));
 		mask.update();
 		maskPixels = mask.getPixels();
@@ -644,15 +626,13 @@ void ofApp::start(ofxDatGuiButtonEvent e) {
 		infoPanel->setActiveStatus("Sorting");
 		sortButton->setLabel("Stop");
 		timeStart = std::chrono::high_resolution_clock::now();
-		if (angle != currentImageAngle) {
-			rotateImage(angle - currentImageAngle, paddingAddedToImage);
-			paddingAddedToImage = true;
-			currentImageAngle = angle;
+		if (angle != psImage->currentImageAngle) {
+			psImage->rotateImage(angle);
 		}
 		if (currentMode == Mode::Video) {
 			infoPanel->setFrameCounter(videoPlayerCv.get(cv::CAP_PROP_POS_FRAMES), videoPlayerCv.get(cv::CAP_PROP_FRAME_COUNT));
 			float fps = videoPlayerCv.get(cv::CAP_PROP_FPS);
-			videoWriter = cv::VideoWriter(imagesPath + getTimeStampedFileName(currentFileName, ".mp4", ""), cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(unrotatedWidth, unrotatedHeight), true);
+			videoWriter = cv::VideoWriter(imagesPath + getTimeStampedFileName(currentFileName, ".mp4", ""), cv::VideoWriter::fourcc('m', 'p', '4', 'v'), fps, cv::Size(psImage->unrotatedWidth, psImage->unrotatedHeight), true);
 		}
 	}
 	else {
@@ -663,7 +643,7 @@ void ofApp::start(ofxDatGuiButtonEvent e) {
 		sortButton->setLabel(SORTBUTTONTITLE);
 		videoWriter.release();
 		videoPlayerCv.release();
-		ofImg.clear();
+		psImage->ofImg.clear();
 		// Display to the user that the video was saved
 	}
 }
@@ -760,22 +740,10 @@ void ofApp::populateImageDir(ofDirectory dir, ofxDatGuiScrollView* scrollView) {
 }
 
 void ofApp::saveCurrentImage(ofxDatGuiButtonEvent e) {
-	if (ofImg.isAllocated() && !started) {
+	if (!started) {
 		infoPanel->setActiveStatus("Saving Image");
-		ofPixels copy;
-		copy.allocate(imagePixels.getWidth(), imagePixels.getHeight(), imagePixels.getImageType());
-		imagePixels.pasteInto(copy, 0, 0);
-		rotateImage(-currentImageAngle, paddingAddedToImage);
-		int originalImageX = ofImg.getWidth() / 2 - unrotatedWidth / 2;
-		int originalImageY = ofImg.getHeight() / 2 - unrotatedHeight / 2;
-		imagePixels.crop(originalImageX, originalImageY, unrotatedWidth, unrotatedHeight);
-		ofImg.resize(imagePixels.getWidth(), imagePixels.getHeight());
-		ofImg.setFromPixels(imagePixels);
 		std::string fullName = getTimeStampedFileName(currentFileName, "", "");
-		ofImg.save(imagesPath + fullName);
-		currentFileName = fullName;
-		imagePixels = copy;
-		ofImg.setFromPixels(imagePixels);
+		psImage->save(fullName);
 	}
 	infoPanel->setActiveStatus(IDLE);
 }
@@ -875,7 +843,7 @@ void ofApp::revertChanges(ofxDatGuiButtonEvent e) {
 
 void ofApp::clearMask(ofxDatGuiButtonEvent e) {
 	mask.clear();
-	mask.allocate(unrotatedWidth, unrotatedHeight, OF_IMAGE_COLOR_ALPHA);
+	mask.allocate(psImage->unrotatedWidth, psImage->unrotatedHeight, OF_IMAGE_COLOR_ALPHA);
 	mask.setColor(ofColor(0, 0, 0, 0));
 	mask.update();
 	maskPixels = mask.getPixels();
@@ -885,9 +853,9 @@ void ofApp::clearMask(ofxDatGuiButtonEvent e) {
 }
 
 void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMode mode, int value) {
-	int scaledCenterX = centerX / currentRatio;
-	int scaledCenterY = centerY / currentRatio;
-	int scaledSize = size / currentRatio;
+	int scaledCenterX = centerX / psImage->currentRatio;
+	int scaledCenterY = centerY / psImage->currentRatio;
+	int scaledSize = size / psImage->currentRatio;
 	int topLeftX = scaledCenterX - scaledSize;
 	int topLeftY = scaledCenterY - scaledSize;
 	for (int y = 0; y < scaledSize * 2; y++) {
@@ -912,11 +880,11 @@ void ofApp::applyBrushStroke(int centerX, int centerY, int size, ofApp::BrushMod
 }
 
 bool ofApp::withinMaskBounds(int x, int y) {
-	return x >= imageAnchorX && x < mask.getWidth() + imageAnchorX && y >= imageAnchorY && y < mask.getHeight() + imageAnchorY;
+	return x >= psImage->imageAnchorX && x < mask.getWidth() + psImage->imageAnchorX && y >= psImage->imageAnchorY && y < mask.getHeight() + psImage->imageAnchorY;
 }
 
 bool ofApp::withinUnrotatedImageBounds(int x, int y) {
-	return x >= imageAnchorX && x < unrotatedWidth * currentRatio + imageAnchorX && y >= imageAnchorY && y < unrotatedHeight * currentRatio + imageAnchorY;
+	return x >= psImage->imageAnchorX && x < psImage->unrotatedWidth * psImage->currentRatio + psImage->imageAnchorX && y >= psImage->imageAnchorY && y < psImage->unrotatedHeight * psImage->currentRatio + psImage->imageAnchorY;
 }
 
 
@@ -958,23 +926,23 @@ void ofApp::drawArrows() {
 	arrowsFbo.end();
 }
 
-void ofApp::calculateCurrentRatio(int width, int height) {
-	if (width > maxWidth || height > maxHeight) {
-		float xRatio = (float)maxWidth / (float)width;
-		float yRatio = (float)maxHeight / (float)height;
-		currentRatio = xRatio < yRatio ? xRatio : yRatio;
-	}
-	else {
-		currentRatio = 1.0f;
-	}
-}
-
-void ofApp::calculateImageAnchorPoints(int unrotatedWidth, int unrotatedHeight, int maxWidth, int maxHeight, float ratio) {
-	int scaledWidth = unrotatedWidth * ratio;
-	int scaledHeight = unrotatedHeight * ratio;
-	imageAnchorX = max(0, (maxWidth - scaledWidth) / 2);
-	imageAnchorY = max(0, (maxHeight - scaledHeight) / 2 + guiHeight);
-}
+//void ofApp::calculateCurrentRatio(int width, int height) {
+//	if (width > maxWidth || height > maxHeight) {
+//		float xRatio = (float)maxWidth / (float)width;
+//		float yRatio = (float)maxHeight / (float)height;
+//		currentRatio = xRatio < yRatio ? xRatio : yRatio;
+//	}
+//	else {
+//		currentRatio = 1.0f;
+//	}
+//}
+//
+//void ofApp::calculateImageAnchorPoints(int unrotatedWidth, int unrotatedHeight, int maxWidth, int maxHeight, float ratio) {
+//	int scaledWidth = unrotatedWidth * ratio;
+//	int scaledHeight = unrotatedHeight * ratio;
+//	imageAnchorX = max(0, (maxWidth - scaledWidth) / 2);
+//	imageAnchorY = max(0, (maxHeight - scaledHeight) / 2 + guiHeight);
+//}
 
 void ofApp::invertMask(ofxDatGuiButtonEvent e) {
 	if (mask.isAllocated()) {
@@ -1020,7 +988,7 @@ void ofApp::mouseDragged(int x, int y, int button){
 		if (!(currentBrushMode == BrushMode::ClickAndDrag)) {
 			if (dragCounter % 2 == 0) {
 				std::cout << "Dragged: " << x << ", " << y << std::endl;
-				applyBrushStroke(x - imageAnchorX, y - imageAnchorY, brushSize, currentBrushMode, 255 * (abs(button - 2) / 2));
+				applyBrushStroke(x - psImage->imageAnchorX, y - psImage->imageAnchorY, brushSize, currentBrushMode, 255 * (abs(button - 2) / 2));
 			} 
 			dragCounter++;
 		}
@@ -1037,7 +1005,7 @@ void ofApp::mousePressed(int x, int y, int button){
 		if (currentBrushMode == BrushMode::ClickAndDrag) {
 		}
 		else {
-			applyBrushStroke(x - imageAnchorX, y - imageAnchorY, brushSize, currentBrushMode, 255 * (abs(button - 2) / 2));
+			applyBrushStroke(x - psImage->imageAnchorX, y - psImage->imageAnchorY, brushSize, currentBrushMode, 255 * (abs(button - 2) / 2));
 		}
 	}
 }
@@ -1063,14 +1031,14 @@ void ofApp::mouseReleased(int x, int y, int button){
 	int value = 255 * abs(button - 2) / 2;
 	if (currentMouseMode == MouseMode::MaskDraw && withinUnrotatedImageBounds(x, y)) {
 		if (currentBrushMode == BrushMode::ClickAndDrag) {
-			int minX = min(clickedX, x) / currentRatio;
-			int minY = min(clickedY, y) / currentRatio;
-			int maxX = max(clickedX, x) / currentRatio;
-			int maxY = max(clickedY, y) / currentRatio;
+			int minX = min(clickedX, x) / psImage->currentRatio;
+			int minY = min(clickedY, y) / psImage->currentRatio;
+			int maxX = max(clickedX, x) / psImage->currentRatio;
+			int maxY = max(clickedY, y) / psImage->currentRatio;
 			for (int row = minY; row < maxY; row++) {
 				for (int col = minX; col < maxX; col++) {
 					if (withinMaskBounds(col, row)) {
-						maskPixels.setColor(col - imageAnchorX, row - imageAnchorY, ofColor(255, 255, 255, value));
+						maskPixels.setColor(col - psImage->imageAnchorX, row - psImage->imageAnchorY, ofColor(255, 255, 255, value));
 					}
 				}
 			}
@@ -1100,8 +1068,8 @@ void ofApp::windowResized(int w, int h){
 	maskImagesScrollView->setNumVisible((h - datMaskPanel->getHeight()) / 26 - 1);
 	maxWidth = w - guiWidth * 2;
 	maxHeight = h - guiHeight;
-	calculateCurrentRatio(unrotatedWidth, unrotatedHeight);
-	calculateImageAnchorPoints(unrotatedWidth, unrotatedHeight, maxWidth, maxHeight, currentRatio);
+	psImage->calculateCurrentRatio(maxWidth, maxHeight);
+	psImage->calculateImageAnchorPoints(maxWidth, maxHeight, guiHeight);
 	infoPanel->setItemPositions(0, 0, ofGetWidth() - guiWidth * 2);
 }
 
