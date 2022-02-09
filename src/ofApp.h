@@ -157,6 +157,7 @@ public:
 	float threshold = 0.25f;
 	float upperThreshold = 0.8f;
 	int angle = 0;
+	int falloffChance = 100;
 	//int currentImageAngle = 0;
 	bool sortComplete = false;
 	//bool paddingAddedToImage = false;
@@ -203,6 +204,7 @@ public:
 	ofxDatGuiSlider* thresholdSlider;
 	ofxDatGuiSlider* upperThresholdSlider;
 	ofxDatGuiSlider* angleSlider;
+	ofxDatGuiSlider* falloffSlider;
 	ofxDatGuiSlider* threadCountSlider;
 
 	ofxDatGui* datMaskPanel;

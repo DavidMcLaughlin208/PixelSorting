@@ -56,7 +56,7 @@ struct SaturationComparator {
 	bool operator() (ofColor i, ofColor j) { return (i.getSaturation() < j.getSaturation()); }
 } saturationComparator;
 
-void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pixelsRef, ofPixels& maskPixelsRef, ofApp::SortParameter sortParameter, float threshold, float upperThreshold, bool useMask, int maskThreshold, float currentImageAngle, int xPadding, int yPadding) {
+void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pixelsRef, ofPixels& maskPixelsRef, ofApp::SortParameter sortParameter, float threshold, float upperThreshold, bool useMask, int maskThreshold, float currentImageAngle, int xPadding, int yPadding, int randomFalloff) {
 	int start = startIndex;
 	int end = (start + 1) * imageWidth;
 	int columnsOrRows = imageHeight;
@@ -148,6 +148,11 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 		}
 		endOfInterval = i - 1;
 
+		if (std::rand() % 100 > randomFalloff) {
+			startOfInterval = -1;
+			endOfInterval = -1;
+			continue;
+		}
 		// TODO: Instead of copying pixels to a vector and then soritng and putting them back. 
 		// Look into extending ofPixels or some way to sort the pixels in place
 		vector<ofColor> intervalColors;
@@ -248,6 +253,7 @@ void ofApp::update() {
 	angle = angleSlider->getValue();
 	threadCount = threadCountSlider->getValue();
 	maskOpacity = maskOpacitySlider->getValue() * 255;
+	falloffChance = falloffSlider->getValue();
 	// Will add this back in later
 	//maskThreshold = maskThresholdSlider->getValue() * 255;
 	brushSize = brushSizeSlider->getValue();
@@ -270,7 +276,7 @@ void ofApp::update() {
 		infoPanel->setActiveStatus("Sorting");
 		vector<std::thread> threadList;
 		for (int i = 0; i < threadCount; i++) {
-			threadList.push_back(std::thread(pixelSortRow, sortingIndex, psImage->ofImg.getWidth(), psImage->ofImg.getHeight(), std::ref(psImage->imagePixels), std::ref(maskPixels), currentlySelectedSortParameter, threshold, upperThreshold, useMask, maskThreshold, psImage->currentImageAngle, psImage->xPadding, psImage->yPadding));
+			threadList.push_back(std::thread(pixelSortRow, sortingIndex, psImage->ofImg.getWidth(), psImage->ofImg.getHeight(), std::ref(psImage->imagePixels), std::ref(maskPixels), currentlySelectedSortParameter, threshold, upperThreshold, useMask, maskThreshold, psImage->currentImageAngle, psImage->xPadding, psImage->yPadding, falloffChance));
 			sortingIndex += 1;
 
 			if (sortingIndex >= psImage->ofImg.getHeight() - 1) {
@@ -628,6 +634,8 @@ void ofApp::setupDatGui() {
 	angleSlider = datImagePanel->addSlider(ANGLESLIDERTITLE, 0, 359, 0);
 	angleSlider->setPrecision(0);
 	angleSlider->onSliderEvent(this, &ofApp::angleSliderChanged);
+	falloffSlider = datImagePanel->addSlider("Falloff", 0, 100, 100);
+	falloffSlider->setPrecision(0);
 	threadCountSlider = datImagePanel->addSlider(THREADCOUNTSLIDERTITLE, 1, 50, threadCount);
 	threadCountSlider->setPrecision(0);
 	threadCountSlider->setValue(threadCount);
