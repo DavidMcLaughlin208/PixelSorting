@@ -27,6 +27,11 @@ public:
 		Saturation
 	};
 
+	enum class SortType {
+		Threshold,
+		Random
+	};
+
 	enum class MouseMode {
 		Default,
 		MaskDraw
@@ -55,6 +60,7 @@ public:
 	void clickOnImageButton(ofxDatGuiScrollViewEvent e);
 	void brushTypeSelected(ofxDatGuiDropdownEvent e);
 	void selectSortingParameter(ofxDatGuiDropdownEvent e);
+	void selectSortType(ofxDatGuiDropdownEvent e);
 	void saveCurentMask(ofxDatGuiButtonEvent e);
 	void clearMask(ofxDatGuiButtonEvent e);
 	void invertMask(ofxDatGuiButtonEvent e);
@@ -195,11 +201,13 @@ public:
 	Mode currentMode = Mode::None;
 	MouseMode currentMouseMode = MouseMode::Default;
 	SortParameter currentlySelectedSortParameter = SortParameter::Brightness;
+	SortType currentlySelectedSortType = SortType::Threshold;
 
 	//ofxDatGui
 	ofxDatGui* datImagePanel;
 	ofxDatGuiScrollView* imageScrollView;;
 	vector<string> sortingParameterOptions;
+	vector<string> sortBasisOptions;
 	ofxDatGuiButton* sortButton;
 	ofxDatGuiSlider* thresholdSlider;
 	ofxDatGuiSlider* upperThresholdSlider;

@@ -56,7 +56,7 @@ struct SaturationComparator {
 	bool operator() (ofColor i, ofColor j) { return (i.getSaturation() < j.getSaturation()); }
 } saturationComparator;
 
-void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pixelsRef, ofPixels& maskPixelsRef, ofApp::SortParameter sortParameter, float threshold, float upperThreshold, bool useMask, int maskThreshold, float currentImageAngle, int xPadding, int yPadding, int randomFalloff) {
+void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pixelsRef, ofPixels& maskPixelsRef, ofApp::SortParameter sortParameter, float threshold, float upperThreshold, bool useMask, int maskThreshold, float currentImageAngle, int xPadding, int yPadding, int randomFalloff, ofApp::SortType sortType) {
 	int start = startIndex;
 	int end = (start + 1) * imageWidth;
 	int columnsOrRows = imageHeight;
@@ -67,6 +67,7 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 
 	int startOfInterval = -1;
 	int endOfInterval = -1;
+	int startingI = start * imageWidth;
 
 	ofColor color;
 	for (int i = start * imageWidth; i < end; i++) {
@@ -122,7 +123,16 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 		if (maskApproved && color.a != 0 && (value >= threshold && value <= upperThreshold)) {
 			if (startOfInterval == -1) {
 				startOfInterval = i;
-				continue;
+				if (sortType == ofApp::SortType::Threshold) {
+					continue;
+				}
+				else if (sortType == ofApp::SortType::Random) {
+					// For random sort type we have just found the start of an interval so we will calculate a random length
+					// and set the end of the interval and not 'continue' and move on to the sorting process
+					endOfInterval = std::min((int) (i + (imageWidth) * 0.01 + (std::rand() % 100)), startingI + imageWidth - 1);
+					i = endOfInterval + 1;
+				}
+				
 			}
 			else {
 				if (!(i == end - 1)) {
@@ -146,7 +156,9 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 				// to sort that interval in the following nested loop
 			}
 		}
-		endOfInterval = i - 1;
+		if (sortType == ofApp::SortType::Threshold) {
+			endOfInterval = i - 1;
+		}
 
 		if (std::rand() % 100 > randomFalloff) {
 			startOfInterval = -1;
@@ -202,6 +214,7 @@ void ofApp::setup() {
 
 	brushTypeOptions = { CIRCLE, SQUARE, CLICKANDDRAG };
 	sortingParameterOptions = { BRIGHTNESS, HUE, SATURATION };
+	sortBasisOptions = { "THRESHOLD", "RANDOM" };
 	
 	// Video codecs included in K-Lite codec pack for windows: https://codecguide.com/download_kl.htm
 	// AVI, MKV, MP4, FLV, MPEG, MOV, TS, M2TS, WMV, RM, RMVB, OGM, WebM
@@ -276,7 +289,7 @@ void ofApp::update() {
 		infoPanel->setActiveStatus("Sorting");
 		vector<std::thread> threadList;
 		for (int i = 0; i < threadCount; i++) {
-			threadList.push_back(std::thread(pixelSortRow, sortingIndex, psImage->ofImg.getWidth(), psImage->ofImg.getHeight(), std::ref(psImage->imagePixels), std::ref(maskPixels), currentlySelectedSortParameter, threshold, upperThreshold, useMask, maskThreshold, psImage->currentImageAngle, psImage->xPadding, psImage->yPadding, falloffChance));
+			threadList.push_back(std::thread(pixelSortRow, sortingIndex, psImage->ofImg.getWidth(), psImage->ofImg.getHeight(), std::ref(psImage->imagePixels), std::ref(maskPixels), currentlySelectedSortParameter, threshold, upperThreshold, useMask, maskThreshold, psImage->currentImageAngle, psImage->xPadding, psImage->yPadding, falloffChance, currentlySelectedSortType));
 			sortingIndex += 1;
 
 			if (sortingIndex >= psImage->ofImg.getHeight() - 1) {
@@ -629,6 +642,9 @@ void ofApp::setupDatGui() {
 	ofxDatGuiDropdown* sortingParameterDropdown = datImagePanel->addDropdown("Sorting Parameter", sortingParameterOptions);
 	sortingParameterDropdown->onDropdownEvent(this, &ofApp::selectSortingParameter);
 	sortingParameterDropdown->select(0);
+	ofxDatGuiDropdown* sortBasisDropdown = datImagePanel->addDropdown("Sorting Type", sortBasisOptions);
+	sortBasisDropdown->onDropdownEvent(this, &ofApp::selectSortType);
+	sortBasisDropdown->select(0);
 	thresholdSlider = datImagePanel->addSlider(LOWERTHRESHOLDTITLE, 0.0f, 1.0f, 0.25f);
 	upperThresholdSlider = datImagePanel->addSlider(UPPERTHRESHOLDTITLE, 0.0f, 1.0f, 0.80f);
 	angleSlider = datImagePanel->addSlider(ANGLESLIDERTITLE, 0, 359, 0);
@@ -793,6 +809,10 @@ void ofApp::brushTypeSelected(ofxDatGuiDropdownEvent e) {
 
 void ofApp::selectSortingParameter(ofxDatGuiDropdownEvent e) {
 	currentlySelectedSortParameter = (SortParameter)e.child;
+}
+
+void ofApp::selectSortType(ofxDatGuiDropdownEvent e) {
+	currentlySelectedSortType = (SortType)e.child;
 }
 
 void ofApp::revertChanges(ofxDatGuiButtonEvent e) {
