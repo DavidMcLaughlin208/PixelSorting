@@ -1,4 +1,5 @@
 #include "ofApp.h"
+#include <random>
 
 std::string ofApp::BRIGHTNESS = "Brightness";
 std::string ofApp::LIGHTNESS = "Lightness";
@@ -55,6 +56,14 @@ struct HueComparator {
 struct SaturationComparator {
 	bool operator() (ofColor i, ofColor j) { return (i.getSaturation() < j.getSaturation()); }
 } saturationComparator;
+
+// Thread safe rng code taken from here: https://gist.github.com/srivathsanmurali/6ca74bdf154b0f5447321be183ba28d1
+float randFloat(float low, float high) {
+	thread_local static std::random_device rd;
+	thread_local static std::mt19937 rng(rd());
+	thread_local std::uniform_real_distribution<float> urd;
+	return urd(rng, decltype(urd)::param_type{ low,high });
+}
 
 void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pixelsRef, ofPixels& maskPixelsRef, ofApp::SortParameter sortParameter, float threshold, float upperThreshold, bool useMask, int maskThreshold, float currentImageAngle, int xPadding, int yPadding, int randomFalloff, ofApp::SortType sortType) {
 	int start = startIndex;
@@ -128,8 +137,9 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 				}
 				else if (sortType == ofApp::SortType::Random) {
 					// For random sort type we have just found the start of an interval so we will calculate a random length
-					// and set the end of the interval and not 'continue' and move on to the sorting process
-					endOfInterval = std::min((int) (i + (imageWidth) * 0.01 + (std::rand() % 100)), startingI + imageWidth - 1);
+					// and set the end of the interval, not 'continue' this loop, and move on to the sorting process
+					int rando = (int) randFloat(1, 100);
+					endOfInterval = std::min((int) (i + (imageWidth) * 0.01 + rando), startingI + imageWidth - 1);
 					i = endOfInterval + 1;
 				}
 				
@@ -160,7 +170,7 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 			endOfInterval = i - 1;
 		}
 
-		if (std::rand() % 100 > randomFalloff) {
+		if (randFloat(0, 100) > randomFalloff) {
 			startOfInterval = -1;
 			endOfInterval = -1;
 			continue;
@@ -205,6 +215,8 @@ void pixelSortRow(int startIndex, int imageWidth, int imageHeight, ofPixels& pix
 void ofApp::setup() {
 	ofEnableAlphaBlending();
 	ofSetEscapeQuitsApp(false);
+
+	srand(time(NULL));
 
 	imagesPath = getResourcesRoot() + DELIM + IMAGES_DIRECTORY + DELIM;
 	masksPath = getResourcesRoot() + DELIM + MASKS_DIRECTORY + DELIM;
